@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Αντιστοίχιση Μελών — Projector Φακέλου Κατασκήνωσης</title>
+<style>
+  :root{
+    --spk:#4B6B2A; --spkd:#37501F; --band:#5F8535; --light:#EEF2E6; --line:#C9D3BA;
+    --ink:#1C2417; --muted:#6D7A5C; --rowalt:#F5F8EE;
+    --green:#3F8F3F; --greenbg:#E1EFD6; --greenbd:#9CC98A;
+    --amber:#B8791A; --amberbg:#FBEFD6; --amberbd:#E7C766;
+    --red:#B23A3A; --redbg:#F6D9D9; --redbd:#E1A9A9;
+    --calc:#FFF6DF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Calibri,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:#fbfcf8;font-size:14px;line-height:1.45}
+  header.top{background:linear-gradient(90deg,var(--spk),var(--band));color:#fff;padding:18px 22px}
+  header.top h1{margin:0;font-size:20px;font-weight:700}
+  header.top .sub{font-size:12.5px;opacity:.92;margin-top:3px}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  .step{background:#fff;border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .step > h2{margin:0;font-size:14.5px;background:var(--light);color:var(--spkd);
+       padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .step .num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--spk);color:#fff;
+       align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+  .step .body{padding:14px}
+  .row{display:flex;flex-wrap:wrap;gap:14px}
+  .col{flex:1 1 320px;min-width:280px}
+  .drop{border:2px dashed var(--line);border-radius:9px;padding:16px;text-align:center;
+       background:#fcfdfb;transition:.15s;cursor:pointer}
+  .drop.hot{border-color:var(--spk);background:var(--light)}
+  .drop .big{font-weight:600;color:var(--spkd)}
+  .drop .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .drop.ok{border-color:var(--greenbd);background:var(--greenbg)}
+  label.fld{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+  select,input[type=text],input[type=url]{width:100%;padding:7px 8px;border:1px solid var(--line);
+       border-radius:6px;font-size:13px;background:#fff;color:var(--ink)}
+  .mini{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .btn{border:1px solid var(--spk);background:var(--spk);color:#fff;border-radius:7px;padding:8px 14px;
+       font-size:13px;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--spkd)}
+  .btn.ghost{background:#fff;color:var(--spkd)}
+  .btn.ghost:hover{background:var(--light)}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  .spacer{flex:1}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .tab{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 13px;font-size:12.5px;cursor:pointer}
+  .tab.active{background:var(--spk);color:#fff;border-color:var(--spk)}
+  table.res{width:100%;border-collapse:collapse;font-size:13px}
+  table.res th{background:var(--spk);color:#fff;font-weight:600;font-size:12px;text-align:left;padding:7px 8px;position:sticky;top:0}
+  table.res td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:middle}
+  tr.g td{background:var(--greenbg)} tr.y td{background:var(--amberbg)} tr.r td{background:var(--redbg)}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap}
+  .badge.g{background:var(--green);color:#fff} .badge.y{background:var(--amber);color:#fff} .badge.r{background:var(--red);color:#fff}
+  .cand{width:100%;padding:5px 6px;border:1px solid var(--amberbd);border-radius:6px;background:#fff;font-size:12.5px}
+  .srch{width:100%;padding:5px 6px;border:1px solid var(--redbd);border-radius:6px;background:#fff;font-size:12.5px}
+  .counts{display:flex;gap:8px;flex-wrap:wrap}
+  .counts .pill.g{background:var(--greenbg);color:var(--green);border:1px solid var(--greenbd)}
+  .counts .pill.y{background:var(--amberbg);color:var(--amber);border:1px solid var(--amberbd)}
+  .counts .pill.r{background:var(--redbg);color:var(--red);border:1px solid var(--redbd)}
+  .counts .pill.t{background:var(--light);color:var(--spkd);border:1px solid var(--line)}
+  .cfgrid{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .cfgrid .cell{min-width:150px}
+  .chk{display:flex;align-items:center;gap:6px;font-size:12.5px}
+  details.help{margin-top:8px;font-size:12.5px;color:var(--muted)}
+  details.help summary{cursor:pointer;color:var(--spkd);font-weight:600}
+  .foot{font-size:11.5px;color:var(--muted);text-align:center;padding:16px}
+  .matchcell{font-weight:600}
+  .sim{font-size:11px;color:var(--muted);font-weight:400}
+  .rmap{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .rmap .cell{min-width:130px;flex:1 1 130px}
+  .hidden{display:none}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--spkd);color:#fff;
+       padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
+  .toast.show{opacity:1}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:6px}
+  .warnbox{background:var(--amberbg);border:1px solid var(--amberbd);color:#7a5410;padding:8px 10px;border-radius:7px;font-size:12.5px;margin-top:8px}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Αντιστοίχιση Μελών</h1>
+  <div class="sub">View-projector του Φακέλου Κατασκήνωσης · Layer 2 (generated views) · διαβάζει δεδομένα → βγάζει έτοιμο-προς-επικόλληση μπλοκ. Το «ντύσιμο» το βάζει ο φάκελος (match formatting).</div>
+</header>
+
+<div class="wrap">
+
+  <div id="privacyBanner" style="display:flex;align-items:center;gap:8px;margin:14px 0 0;padding:9px 12px;border-radius:8px;font-size:12.5px;background:var(--greenbg);border:1px solid var(--greenbd);color:#2b5a1f">
+    <span style="font-size:15px">🔒</span>
+    <span id="privacyText">Τα δεδομένα επεξεργάζονται 100% τοπικά στον browser σου και δεν αποστέλλονται πουθενά — το εργαλείο δεν κάνει καμία εξωτερική κλήση.</span>
+  </div>
+  <div id="hostWarn" class="warnbox hidden" style="margin-top:8px"></div>
+
+  <!-- STEP 1 : ΜΗΤΡΩΟ -->
+  <section class="step">
+    <h2><span class="num">1</span> Μητρώο — Google Sheet (ένα tab)</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col">
+          <div id="dropReg" class="drop">
+            <div class="big">⬇ Ρίξε CSV ή XLSX του μητρώου εδώ</div>
+            <div class="hint">ή κάνε κλικ · «Αρχείο → Λήψη → CSV/XLSX» ή «Δημοσίευση στον ιστό» · ολόκληρο workbook = επιλογή tab</div>
+            <input id="fileReg" type="file" accept=".csv,.xlsx,text/csv" class="hidden">
+          </div>
+          <div id="sheetPick" class="hidden" style="margin-top:8px">
+            <label class="fld">Το αρχείο έχει πολλά tabs — διάλεξε ποιο:</label>
+            <select id="sheetSel"></select>
+          </div>
+          <label class="fld">…ή Publish-to-web CSV URL (προαιρετικό)</label>
+          <div style="display:flex;gap:6px">
+            <input id="regUrl" type="url" placeholder="https://docs.google.com/…/pub?output=csv">
+            <button class="btn ghost sm" id="regUrlBtn">Φόρτωση</button>
+          </div>
+          <div class="warnbox hidden" id="regUrlWarn">Αν το URL δεν φορτώνει από <code>file://</code> (CORS), κατέβασε το CSV/XLSX και ρίξ' το με drag-drop.</div>
+        </div>
+        <div class="col">
+          <label class="fld">Ποιο tab φόρτωσες; <b>(αυτό ΕΙΝΑΙ το φίλτρο — θα εξαχθεί μόνο η τομή του)</b></label>
+          <div class="tabs" id="tabRow">
+            <div class="tab" data-tab="Όλοι">Όλοι</div>
+            <div class="tab" data-tab="Βαθμοφόροι">Βαθμοφόροι</div>
+            <div class="tab" data-tab="Αγέλη">Αγέλη</div>
+            <div class="tab" data-tab="Ομάδα">Ομάδα</div>
+            <div class="tab" data-tab="Κοινότητα">Κοινότητα</div>
+          </div>
+          <div class="rmap" id="regMap"></div>
+          <div class="mini" id="regInfo" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 : ΛΙΣΤΑ ΣΥΜΜΕΤΕΧΟΝΤΩΝ -->
+  <section class="step">
+    <h2><span class="num">2</span> Λίστα Συμμετεχόντων — export φόρμας Smartespot</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col">
+          <div id="dropPart" class="drop">
+            <div class="big">⬇ Ρίξε CSV ή XLSX της φόρμας εδώ</div>
+            <div class="hint">ή κάνε κλικ · export Smartespot (περιέχει Όνομα + Επίθετο)</div>
+            <input id="filePart" type="file" accept=".csv,.xlsx,text/csv" class="hidden">
+          </div>
+        </div>
+        <div class="col">
+          <div class="rmap" id="partMap"></div>
+          <div class="mini" id="partInfo" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4 : ΡΥΘΜΙΣΕΙΣ + ΜΗΧΑΝΗ -->
+  <section class="step">
+    <h2><span class="num">4</span> Μηχανή αντιστοίχισης &amp; μάθηση</h2>
+    <div class="body">
+      <div class="toolbar">
+        <button class="btn" id="runBtn" disabled>▶ Τρέξε αντιστοίχιση</button>
+        <span class="mini" id="engInfo"></span>
+        <span class="spacer"></span>
+        <button class="btn ghost sm" id="aliasImport">⇪ Import ALIAS (JSON)</button>
+        <button class="btn ghost sm" id="aliasExport">⇩ Export ALIAS (JSON)</button>
+        <input id="fileAlias" type="file" accept=".json,application/json" class="hidden">
+      </div>
+      <details class="help">
+        <summary>Πώς κρίνει (κατώφλια &amp; λογική)</summary>
+        <p>Ντετερμινιστικό normalization πριν κάθε σύγκριση: trim + μάζεμα κενών · ελληνικό uppercase · τελικό ς→σ · αφαίρεση τόνων/διαλυτικών (NFD) · Greeklish↔ελληνικά · δοκιμή και των δύο σειρών (Όνομα/Επίθετο ↔ Επίθετο/Όνομα). Blocking: πρώτα επίθετο, μετά όνομα μέσα στο block.</p>
+        <p><span class="badge g">ΠΡΑΣΙΝΟ</span> ακριβές canonical ή fuzzy ≥ 90% &amp; μοναδικός → auto, προεπιλεγμένο. &nbsp;
+           <span class="badge y">ΚΙΤΡΙΝΟ</span> ~72–90% ή πολλοί κοντινοί → dropdown. &nbsp;
+           <span class="badge r">ΚΟΚΚΙΝΟ</span> &lt; 72% → δεν βρέθηκε.</p>
+        <p>Μαθαίνει: λεξικό υποκοριστικών (Θανάσης↔Αθανάσιος, Μπάμπης↔Χαράλαμπος…) + ALIAS table — κάθε χειροκίνητο match αποθηκεύεται &amp; γίνεται auto την επόμενη φορά (φορητό JSON).</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- STEP 5 : ΑΠΟΤΕΛΕΣΜΑΤΑ -->
+  <section class="step hidden" id="resStep">
+    <h2><span class="num">5</span> Αποτελέσματα &amp; εξαγωγή</h2>
+    <div class="body">
+      <div class="toolbar">
+        <div class="counts" id="counts"></div>
+        <span class="spacer"></span>
+        <label class="chk"><input type="checkbox" id="onlyChecked"> Μόνο τσεκαρισμένα στο copy</label>
+      </div>
+
+      <div class="cfgrid" style="margin:6px 0 12px;padding:10px;background:var(--light);border-radius:8px">
+        <div class="cell">
+          <label class="fld">Μορφή ονόματος (στήλη «Ονοματεπώνυμο»)</label>
+          <select id="nameShape">
+            <option value="full_FL">Ονοματεπώνυμο (Όνομα Επίθετο)</option>
+            <option value="full_LF">Ονοματεπώνυμο (Επίθετο Όνομα)</option>
+            <option value="split">Χωριστά: Όνομα | Επίθετο</option>
+          </select>
+          <div class="chk" style="margin-top:8px"><input type="checkbox" id="cAA" checked> Στήλη Α/Α μπροστά</div>
+        </div>
+        <div class="cell" style="flex:2 1 320px">
+          <label class="fld">Επιπλέον στήλες από το Μητρώο (μέσω match)</label>
+          <div id="extraCols" style="display:flex;flex-wrap:wrap;gap:4px 14px"><span class="mini">Φόρτωσε πρώτα το μητρώο…</span></div>
+          <label class="fld" style="margin-top:6px">Πηγή τιμών</label>
+          <select id="colSrc">
+            <option value="registry">Από το Μητρώο</option>
+            <option value="blank">Κενές (τις γεμίζω μετά στο ΣΠΚ)</option>
+          </select>
+        </div>
+        <div class="cell" style="flex:1 1 auto">
+          <label class="fld">Αντιγραφή</label>
+          <button class="btn" id="copyBtn">⧉ Copy μπλοκ (HTML + TSV)</button>
+          <button class="btn ghost" id="copyEkto" style="margin-top:6px">⇥ Βαθμοφόροι εκτός φάσης →</button>
+        </div>
+      </div>
+      <div class="legend">Το <b>Copy</b> γράφει ΔΥΟ formats: <code>text/html</code> (για Docs/Word — μένει η δομή, πετιέται το styling) και <code>text/plain</code> ως <b>TSV</b> (κολλάει καθαρά σε κελιά του ΣΠΚ ΔΔ v4 xlsx). Το «εκτός φάσης» βγάζει το κόκκινο subset ως paste-ready μπλοκ για το sheet «Βαθμοφόροι εκτός φάσης». Το module ΔΕΝ γράφει μόνο του στο Sheet.</div>
+
+      <div style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
+        <table class="res" id="resTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">camp-members-matcher.html · offline / file:// · καμία εξωτερική βιβλιοθήκη · 76η Ομάδα Στροβόλου</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ================================================================
+   ΜΗΧΑΝΗ ΑΝΤΙΣΤΟΙΧΙΣΗΣ — καθαρές, ντετερμινιστικές συναρτήσεις
+   ================================================================ */
+
+/* ---- CSV parser (quotes, commas, newlines) ---- */
+function parseCSV(text){
+  text = text.replace(/^﻿/,'');            // strip BOM
+  const rows=[]; let row=[]; let cur=''; let q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===','){ row.push(cur); cur=''; }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+      else if(c==='\r'){ /* skip */ }
+      else cur+=c;
+    }
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+
+/* ---- basic Greek normalization ---- */
+function collapseSpaces(s){ return String(s).trim().replace(/\s+/g,' '); }
+function stripDiacritics(s){ return s.normalize('NFD').replace(/[̀-ͯ]/g,'').normalize('NFC'); }
+function greekUpper(s){ return stripDiacritics(collapseSpaces(s)).toUpperCase().replace(/΄/g,''); }
+function finalSigma(s){ return s.replace(/Σ(?=\s|$)/g,'Σ').replace(/ς/g,'σ'); }
+
+/* canonical Greek key: upper, no accents, final sigma folded, no punctuation */
+function greekCanon(s){
+  let t = greekUpper(finalSigma(String(s).toLowerCase()));
+  t = t.replace(/[^Α-ΩA-Z0-9 ]/g,'');
+  return collapseSpaces(t);
+}
+
+/* ---- Greek → Latin phonetic reduction (digraphs first) ---- */
+function greekToLatin(input){
+  let s = stripDiacritics(collapseSpaces(String(input))).toLowerCase();
+  s = s.replace(/ς/g,'σ');
+  // NB: no μπ→b / ντ→d / γκ→g digraphs — greeklish users type them literally
+  // (Antri, Konstantinou, Papantoniou), so map μ,π,ν,τ,γ,κ as single letters.
+  const digraphs=[['ου','u'],['αυ','af'],['ευ','ef'],['ηυ','if'],
+    ['τσ','ts'],['τζ','tz'],['αι','e'],['ει','i'],['οι','i'],['υι','i']];
+  for(const [a,b] of digraphs) s=s.split(a).join(b);
+  const map={'α':'a','β':'v','γ':'g','δ':'d','ε':'e','ζ':'z','η':'i','θ':'th','ι':'i',
+    'κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','π':'p','ρ':'r','σ':'s','τ':'t',
+    'υ':'i','φ':'f','χ':'x','ψ':'ps','ω':'o'};
+  let out='';
+  for(const ch of s) out += (map[ch]!==undefined?map[ch]:ch);
+  return out;
+}
+
+/* ---- phonetic key: works for Greek OR Greeklish input ---- */
+function phonKey(input){
+  let s = String(input).toLowerCase();
+  if(/[α-ω]/.test(s)) s = greekToLatin(s);        // Greek → latin
+  else s = stripDiacritics(s);
+  // greeklish-normalising substitutions
+  s = s.replace(/8/g,'th').replace(/3/g,'ks').replace(/9/g,'th');
+  s = s.replace(/ph/g,'f').replace(/gh/g,'g').replace(/ch/g,'x').replace(/ck/g,'k');
+  s = s.replace(/ps/g,'ps').replace(/th/g,'8');   // protect th as token
+  s = s.replace(/ou/g,'u').replace(/ai/g,'e');
+  s = s.replace(/y/g,'i').replace(/w/g,'o').replace(/j/g,'g');
+  s = s.replace(/h/g,'');                          // silent h
+  s = s.replace(/c/g,'k');                         // unify c→k
+  s = s.replace(/[^a-z8]/g,'');                    // keep letters + protected 8
+  s = s.replace(/(.)\1+/g,'$1');                   // collapse doubles
+  return s;
+}
+
+/* ---- Levenshtein + ratio ---- */
+function lev(a,b){
+  if(a===b) return 0;
+  const m=a.length, n=b.length;
+  if(!m) return n; if(!n) return m;
+  let prev=new Array(n+1); for(let j=0;j<=n;j++) prev[j]=j;
+  for(let i=1;i<=m;i++){
+    let cur=[i];
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+cost);
+    }
+    prev=cur;
+  }
+  return prev[n];
+}
+function ratio(a,b){
+  if(!a && !b) return 1;
+  const L=Math.max(a.length,b.length); if(!L) return 1;
+  return 1 - lev(a,b)/L;
+}
+/* token-sort ratio: sort word tokens, compare (order-independent) */
+function tokenSort(s){ return s.split(' ').filter(Boolean).sort().join(' '); }
+
+/* ---- diminutives / nickname groups (canonical Greek, accent-free upper) ---- */
+const DIMINUTIVES=[
+  ['ΑΘΑΝΑΣΙΟΣ','ΘΑΝΑΣΗΣ','ΣΑΚΗΣ','ΝΑΣΟΣ'],
+  ['ΧΑΡΑΛΑΜΠΟΣ','ΜΠΑΜΠΗΣ','ΧΑΡΗΣ'],
+  ['ΚΩΝΣΤΑΝΤΙΝΟΣ','ΚΩΣΤΑΣ','ΝΤΙΝΟΣ','ΚΩΝΣΤΑΝΤΙΝΑ','ΝΤΙΝΑ'],
+  ['ΓΕΩΡΓΙΟΣ','ΓΙΩΡΓΟΣ','ΓΙΩΡΓΗΣ','ΤΖΩΡΤΖΟΣ'],
+  ['ΔΗΜΗΤΡΙΟΣ','ΔΗΜΗΤΡΗΣ','ΜΗΤΣΟΣ','ΤΑΚΗΣ','ΔΗΜΗΤΡΑ'],
+  ['ΕΜΜΑΝΟΥΗΛ','ΜΑΝΟΣ','ΜΑΝΩΛΗΣ'],
+  ['ΙΩΑΝΝΗΣ','ΓΙΑΝΝΗΣ','ΝΤΖΟΝ','ΙΩΑΝΝΑ','ΓΙΑΝΝΑ'],
+  ['ΒΑΣΙΛΕΙΟΣ','ΒΑΣΙΛΗΣ','ΒΑΣΟΣ','ΒΑΣΙΛΙΚΗ','ΒΑΣΩ'],
+  ['ΝΙΚΟΛΑΟΣ','ΝΙΚΟΣ','ΝΙΚΟΛΑΣ','ΝΙΚΟΛΕΤΑ'],
+  ['ΠΑΝΑΓΙΩΤΗΣ','ΠΑΝΟΣ','ΠΑΝΙΚΟΣ','ΤΑΚΗΣ','ΠΑΝΑΓΙΩΤΑ','ΓΙΩΤΑ'],
+  ['ΕΛΕΝΗ','ΕΛΕΝΑ','ΛΕΝΑ','ΛΕΝΙΑ'],
+  ['ΕΛΕΥΘΕΡΙΟΣ','ΛΕΥΤΕΡΗΣ','ΤΕΡΗΣ'],
+  ['ΑΝΑΣΤΑΣΙΟΣ','ΤΑΣΟΣ','ΑΝΑΣΤΑΣΙΑ','ΝΑΤΑΣΑ','ΣΟΥΛΑ'],
+  ['ΑΝΔΡΕΑΣ','ΑΝΤΡΕΑΣ'],
+  ['ΑΛΕΞΑΝΔΡΟΣ','ΑΛΕΞΗΣ','ΑΛΕΞΑΝΔΡΑ'],
+  ['ΕΥΑΓΓΕΛΟΣ','ΒΑΓΓΕΛΗΣ','ΕΥΑΓΓΕΛΙΑ','ΕΥΗ'],
+  ['ΣΤΑΥΡΟΣ','ΣΤΑΥΡΟΥΛΑ','ΡΟΥΛΑ'],
+  ['ΘΕΟΔΩΡΟΣ','ΘΟΔΩΡΗΣ','ΝΤΟΡΟΣ','ΘΕΟΔΩΡΑ','ΝΤΟΡΑ'],
+  ['ΧΡΙΣΤΙΝΑ','ΧΡΙΣΤΙΑΝΑ']
+];
+const DIM_MAP={}; // canon name → group id
+DIMINUTIVES.forEach((grp,gi)=>grp.forEach(n=>{ DIM_MAP[greekCanon(n)]=gi; }));
+function sameGivenGroup(a,b){
+  const ga=DIM_MAP[greekCanon(a)], gb=DIM_MAP[greekCanon(b)];
+  return ga!==undefined && ga===gb;
+}
+
+/* ================================================================
+   Build a "person" object from first / last
+   ================================================================ */
+function makePerson(first,last,extra){
+  first=collapseSpaces(first||''); last=collapseSpaces(last||'');
+  return {
+    first,last,
+    display:(last?last+' ':'')+first,
+    gCanonFL:greekCanon(first+' '+last),
+    gCanonLF:greekCanon(last+' '+first),
+    gFirst:greekCanon(first), gLast:greekCanon(last),
+    pFirst:phonKey(first), pLast:phonKey(last),
+    pSort:tokenSort(phonKey(first)+' '+phonKey(last)),
+    extra:extra||{}
+  };
+}
+
+/* similarity between a participant and a registry person (0..1) */
+function personSim(p,r){
+  // exact canonical, either order
+  if(p.gCanonFL && (p.gCanonFL===r.gCanonFL || p.gCanonFL===r.gCanonLF)) return 1;
+  if(p.gCanonLF && (p.gCanonLF===r.gCanonFL || p.gCanonLF===r.gCanonLF)) return 1;
+  // phonetic token-sort exact
+  if(p.pSort && p.pSort===r.pSort) return 1;
+  // diminutive-aware: surname strong + given in same nickname group
+  const surn=Math.max(ratio(p.pLast,r.pLast), ratio(p.pLast,r.pFirst));
+  if(surn>=0.86 && (sameGivenGroup(p.first,r.first)||sameGivenGroup(p.first,r.last))) return 0.97;
+  // fuzzy token-sort on phonetic
+  let best=ratio(p.pSort,r.pSort);
+  // also straight both-orders phonetic
+  best=Math.max(best, ratio(p.pFirst+p.pLast, r.pFirst+r.pLast));
+  best=Math.max(best, ratio(p.pFirst+p.pLast, r.pLast+r.pFirst));
+  return best;
+}
+
+const TH_GREEN=0.90, TH_AMBER=0.72, TH_BLOCK=0.62;
+
+/* core matcher: participant p against registry list R (already tab-filtered) */
+function matchOne(p, R, aliasMap){
+  // alias hit → forced green
+  const ak = p.gCanonLF;
+  if(aliasMap && aliasMap[ak]!==undefined){
+    const idx=aliasMap[ak];
+    if(R[idx]) return {status:'g', pick:idx, sim:1, cands:[{i:idx,s:1}], alias:true};
+  }
+  // blocking by surname (phonetic), fall back to full scan
+  let block=[];
+  for(let i=0;i<R.length;i++){
+    const r=R[i];
+    const sur=Math.max(ratio(p.pLast,r.pLast), ratio(p.pLast,r.pFirst), ratio(p.pFirst,r.pLast));
+    if(sur>=TH_BLOCK) block.push(i);
+  }
+  const scan = block.length? block : R.map((_,i)=>i);
+  let scored=scan.map(i=>({i,s:personSim(p,R[i])}));
+  scored.sort((a,b)=>b.s-a.s);
+  const top=scored[0]||{i:-1,s:0};
+  const second=scored[1]||{i:-1,s:0};
+  let status,pick;
+  if(top.s>=TH_GREEN && (second.s < TH_GREEN - 0.001 || top.s>=0.999)){
+    status='g'; pick=top.i;
+  }else if(top.s>=TH_GREEN){                 // multiple ≥90 → ambiguous
+    status='y'; pick=top.i;
+  }else if(top.s>=TH_AMBER){
+    status='y'; pick=top.i;
+  }else{
+    status='r'; pick=-1;
+  }
+  const cands = scored.filter(x=>x.s>=TH_BLOCK-0.1).slice(0,6);
+  if(!cands.length && top.i>=0) cands.push(top);
+  return {status,pick,sim:top.s,cands};
+}
+
+/* expose for node test harness */
+if(typeof module!=='undefined'){ module.exports={parseCSV,greekCanon,phonKey,makePerson,personSim,matchOne,ratio,sameGivenGroup}; }
+</script>
+
+<script>
+/* ================================================================
+   UI WIRING
+   ================================================================ */
+if(typeof document!=='undefined'){(function(){
+const $=id=>document.getElementById(id);
+let REG=null;         // {rows, headers, map, tab, persons:[], order}
+let PART=null;        // {rows, headers, map, persons:[]}
+let RESULTS=[];       // per-participant result rows
+let ALIAS={};         // gCanonLF → registry index (rebuilt by identity on run)
+let ALIAS_STORE={};   // portable: gCanonLF(participant) → {last,first} registry identity
+let pendingRegTab=null;
+
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+
+/* ================================================================
+   Offline XLSX reader — ZIP + native deflate-raw + DOMParser (no libs)
+   ================================================================ */
+async function inflateRaw(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  const st=new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+async function xlsxUnzip(ab){
+  const d=new DataView(ab), bytes=new Uint8Array(ab); let eo=-1;
+  for(let i=bytes.length-22;i>=0;i--){ if(d.getUint32(i,true)===0x06054b50){eo=i;break;} }
+  if(eo<0) throw new Error('not a zip');
+  const count=d.getUint16(eo+10,true), cdOff=d.getUint32(eo+16,true); const files={}; let p=cdOff;
+  for(let n=0;n<count;n++){
+    if(d.getUint32(p,true)!==0x02014b50) break;
+    const method=d.getUint16(p+10,true), csize=d.getUint32(p+20,true),
+      fnlen=d.getUint16(p+28,true), exlen=d.getUint16(p+30,true), cmlen=d.getUint16(p+32,true), lho=d.getUint32(p+42,true);
+    const name=new TextDecoder().decode(bytes.subarray(p+46,p+46+fnlen));
+    const lfn=d.getUint16(lho+26,true), lex=d.getUint16(lho+28,true), start=lho+30+lfn+lex;
+    files[name]={method,comp:bytes.subarray(start,start+csize)}; p+=46+fnlen+exlen+cmlen;
+  }
+  return files;
+}
+async function xlsxEntry(files,name){ const f=files[name]; if(!f) return null;
+  const raw=f.method===0?f.comp:await inflateRaw(f.comp); return new TextDecoder('utf-8').decode(raw); }
+function colToIdx(ref){ let s=ref.replace(/[0-9]+$/,''),n=0; for(const c of s) n=n*26+(c.charCodeAt(0)-64); return n-1; }
+function xmlDoc(t){ return new DOMParser().parseFromString(t||'<x/>','application/xml'); }
+async function readXlsx(ab){
+  const files=await xlsxUnzip(ab); let shared=[];
+  const ss=await xlsxEntry(files,'xl/sharedStrings.xml');
+  if(ss){ const doc=xmlDoc(ss), sis=doc.getElementsByTagName('si');
+    for(let i=0;i<sis.length;i++){ const ts=sis[i].getElementsByTagName('t'); let s=''; for(let j=0;j<ts.length;j++) s+=ts[j].textContent; shared.push(s); } }
+  const wbDoc=xmlDoc(await xlsxEntry(files,'xl/workbook.xml'));
+  const relDoc=xmlDoc(await xlsxEntry(files,'xl/_rels/workbook.xml.rels'));
+  const relMap={}; const rl=relDoc.getElementsByTagName('Relationship');
+  for(let i=0;i<rl.length;i++) relMap[rl[i].getAttribute('Id')]=rl[i].getAttribute('Target');
+  const se=wbDoc.getElementsByTagName('sheet'); const sheets=[];
+  for(let i=0;i<se.length;i++){
+    const name=se[i].getAttribute('name');
+    const rid=se[i].getAttribute('r:id')||se[i].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+    let tgt=relMap[rid]||('worksheets/sheet'+(i+1)+'.xml'); tgt=tgt.replace(/^\//,''); if(!tgt.startsWith('xl/')) tgt='xl/'+tgt;
+    sheets.push({name,path:tgt});
+  }
+  async function rows(path){
+    const doc=xmlDoc(await xlsxEntry(files,path)); const re=doc.getElementsByTagName('row'); const out=[];
+    for(let i=0;i<re.length;i++){ const cs=re[i].getElementsByTagName('c'); const arr=[];
+      for(let j=0;j<cs.length;j++){ const c=cs[j]; const ref=c.getAttribute('r')||''; const idx=ref?colToIdx(ref):j; const t=c.getAttribute('t'); let v='';
+        if(t==='s'){ const vv=c.getElementsByTagName('v')[0]; v=vv?shared[parseInt(vv.textContent)]:''; }
+        else if(t==='inlineStr'){ const is=c.getElementsByTagName('t')[0]; v=is?is.textContent:''; }
+        else { const vv=c.getElementsByTagName('v')[0]; v=vv?vv.textContent:''; }
+        arr[idx]=v; }
+      for(let k=0;k<arr.length;k++) if(arr[k]===undefined) arr[k]=''; out.push(arr);
+    } return out;
+  }
+  return {sheets,rows};
+}
+
+/* ---- sheet→tab mapping (για workbook με πολλά φύλλα) ---- */
+const SHEET_TAB={'ΟΛΟΙ':'Όλοι','ΒΑΘΜ':'Βαθμοφόροι','ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
+function setTabFromSheet(name){ const t=SHEET_TAB[String(name).trim()]||(['Όλοι','Βαθμοφόροι','Αγέλη','Ομάδα','Κοινότητα'].includes(String(name).trim())?String(name).trim():null);
+  if(t){ pendingRegTab=t; [...document.querySelectorAll('#tabRow .tab')].forEach(x=>x.classList.toggle('active',x.dataset.tab===t)); } }
+function extOf(f){ return (f.name.split('.').pop()||'').toLowerCase(); }
+async function handleRegFile(file){
+  if(extOf(file)==='xlsx'){ let wb; try{ wb=await readXlsx(await file.arrayBuffer()); }catch(e){ toast('Αποτυχία ανάγνωσης XLSX.'); return; }
+    if(wb.sheets.length>1){ const sel=$('sheetSel'); sel.innerHTML=wb.sheets.map((s,i)=>`<option value="${i}">${escapeHtml(s.name)}</option>`).join('');
+      $('sheetPick').classList.remove('hidden');
+      const pick=async()=>{ const s=wb.sheets[+sel.value]; setTabFromSheet(s.name); ingestRegRows(await wb.rows(s.path)); };
+      sel.onchange=pick;
+      const def=wb.sheets.findIndex(s=>['ΚΑ','ΟΠ','ΑΛ','Κοινότητα','Ομάδα','Αγέλη'].includes(s.name)); sel.value=def>=0?def:0; pick();
+    } else { const s=wb.sheets[0]; setTabFromSheet(s.name); ingestRegRows(await wb.rows(s.path)); }
+  } else { readFile(file,loadReg); }
+}
+async function handlePartFile(file){
+  if(extOf(file)==='xlsx'){ let wb; try{ wb=await readXlsx(await file.arrayBuffer()); }catch(e){ toast('Αποτυχία ανάγνωσης XLSX.'); return; }
+    ingestPartRows(await wb.rows(wb.sheets[0].path));
+  } else { readFile(file,loadPart); }
+}
+
+/* ---------- generic drop wiring ---------- */
+function wireDrop(dropId,inputId,onFile){
+  const d=$(dropId), inp=$(inputId);
+  d.addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',e=>{ if(e.target.files[0]) onFile(e.target.files[0]); });
+  ['dragenter','dragover'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.add('hot');}));
+  ['dragleave','drop'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.remove('hot');}));
+  d.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) onFile(f); });
+}
+
+/* ---------- column guessing ---------- */
+function guess(headers,names){
+  const H=headers.map(h=>greekCanon(h));
+  for(const n of names){ const g=greekCanon(n); const i=H.findIndex(h=>h===g); if(i>=0) return i; }
+  for(const n of names){ const g=greekCanon(n); const i=H.findIndex(h=>h&&h.includes(g)); if(i>=0) return i; }
+  return -1;
+}
+/* find the real header row inside a Google-Sheets CSV that has a crest/preamble band */
+const HEADER_HINTS=['ΟΝΟΜΑΤΕΠΩΝΥΜΟ','ΟΝΟΜΑ','ΕΠΙΘΕΤΟ','ΤΜΗΜΑ','ΑΡΙΘΜΟΣ ΜΗΤΡΩΟΥ','FULL NAME','FIRST NAME','LAST NAME'];
+function findHeaderRow(rows){
+  for(let i=0;i<Math.min(rows.length,30);i++){
+    const canon=rows[i].map(c=>greekCanon(c));
+    const hits=canon.filter(c=>HEADER_HINTS.some(h=>c===h||(c&&c.includes(h)))).length;
+    if(hits>=1 && rows[i].filter(c=>String(c).trim()).length>=2) return i;
+  }
+  return 0;
+}
+function trimCols(headers,rows){
+  let last=headers.length-1;
+  while(last>0 && !String(headers[last]).trim() && rows.every(r=>!String(r[last]||'').trim())) last--;
+  return {headers:headers.slice(0,last+1), rows:rows.map(r=>r.slice(0,last+1))};
+}
+function mapSelect(headers,sel){
+  let h='<option value="-1">— (κανένα) —</option>';
+  headers.forEach((x,i)=>{ h+=`<option value="${i}" ${i===sel?'selected':''}>${escapeHtml(x||('στήλη '+(i+1)))}</option>`; });
+  return h;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* split a single «Ονοματεπώνυμο» cell into first/last, honouring the chosen order */
+function splitFull(s,order){
+  const parts=collapseSpaces(s).split(' ').filter(Boolean);
+  if(parts.length<2) return {first:parts[0]||'',last:''};
+  if(order==='LF') return {last:parts[0], first:parts.slice(1).join(' ')};   // Επίθετο Όνομα
+  return {first:parts[0], last:parts.slice(1).join(' ')};                     // Όνομα Επίθετο (default)
+}
+
+/* ---------- Μητρώο load ---------- */
+function loadReg(text){ ingestRegRows(parseCSV(text)); }
+function ingestRegRows(rows){
+  if(!rows||rows.length<1){ toast('Άδειο ή μη έγκυρο αρχείο'); return; }
+  const hr=findHeaderRow(rows);
+  let headers=rows[hr], data=rows.slice(hr+1);
+  ({headers,rows:data}=trimCols(headers,data));
+  const map={
+    first:guess(headers,['Όνομα','Ονομα','First Name','First','Μικρό όνομα']),
+    last :guess(headers,['Επίθετο','Επιθετο','Last Name','Last','Surname']),
+    full :guess(headers,['Ονοματεπώνυμο','Ονοματεπωνυμο','Full Name','Ον/μο']),
+    idi  :guess(headers,['Τμήμα','Ιδιότητα','Idiotita']),
+    eno  :guess(headers,['Ενωμοτία','Ενωμοτια','Αγέλη','Section','Κλιμάκιο']),
+    kath :guess(headers,['Καθήκον','Καθηκον','Ρόλος','Role','Duty'])
+  };
+  REG={rows:data,headers,map,order:REG?REG.order:'FL',tab:pendingRegTab||(REG?REG.tab:null)};
+  pendingRegTab=null;
+  renderRegMap();
+  buildRegPersons();
+  buildExportCols();
+}
+function renderRegMap(){
+  const h=REG.headers, m=REG.map;
+  $('regMap').innerHTML=`
+    <div class="cell"><label class="fld">Ονοματεπώνυμο (μία στήλη)</label><select data-k="full">${mapSelect(h,m.full)}</select></div>
+    <div class="cell"><label class="fld">Σειρά ονόματος</label>
+      <select data-k="order"><option value="FL" ${REG.order==='FL'?'selected':''}>Όνομα Επίθετο</option><option value="LF" ${REG.order==='LF'?'selected':''}>Επίθετο Όνομα</option></select></div>
+    <div class="cell"><label class="fld">…ή Όνομα (χωριστά)</label><select data-k="first">${mapSelect(h,m.first)}</select></div>
+    <div class="cell"><label class="fld">…ή Επίθετο (χωριστά)</label><select data-k="last">${mapSelect(h,m.last)}</select></div>
+    <div class="cell"><label class="fld">Ιδιότητα (Τμήμα)</label><select data-k="idi">${mapSelect(h,m.idi)}</select></div>`;
+  $('regMap').querySelectorAll('select').forEach(s=>s.addEventListener('change',e=>{
+    const k=e.target.dataset.k;
+    if(k==='order') REG.order=e.target.value; else REG.map[k]=parseInt(e.target.value);
+    buildRegPersons(); buildExportCols();
+  }));
+}
+function buildRegPersons(){
+  const m=REG.map;
+  REG.persons=REG.rows.map(row=>{
+    let first='',last='';
+    if(m.full>=0){ const sp=splitFull(row[m.full]||'',REG.order); first=sp.first; last=sp.last; }
+    else if(m.first>=0||m.last>=0){ first=row[m.first]||''; last=row[m.last]||''; }
+    const extra={ idi:m.idi>=0?collapseSpaces(row[m.idi]||''):'', row:row, headers:REG.headers };
+    return makePerson(first,last,extra);
+  }).filter(p=>p.display.trim());
+  $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons.length}</b> εγγραφές${REG.tab?` · tab: <b>${REG.tab}</b> (φίλτρο)`:''}`;
+  $('dropReg').classList.add('ok');
+  refreshRun();
+}
+/* dynamic list of registry columns available for the export block */
+function buildExportCols(){
+  const box=$('extraCols'); if(!box) return;
+  const m=REG.map;
+  const nameIdx=new Set([m.full,m.first,m.last].filter(i=>i>=0));
+  const defOn=['ΑΡΙΘΜΟΣ ΜΗΤΡΩΟΥ','ΗΜ ΓΕΝΝΗΣΗΣ','ΤΜΗΜΑ'];
+  box.innerHTML=REG.headers.map((h,i)=>{
+    if(nameIdx.has(i)||!String(h).trim()) return '';
+    const on=defOn.some(d=>greekCanon(h)===d||greekCanon(h).includes(d));
+    return `<label class="chk"><input type="checkbox" class="excol" data-i="${i}" ${on?'checked':''}> ${escapeHtml(h)}</label>`;
+  }).join('');
+}
+
+/* ---------- Συμμετέχοντες load ---------- */
+function loadPart(text){ ingestPartRows(parseCSV(text)); }
+function ingestPartRows(rows){
+  if(!rows||rows.length<1){ toast('Άδειο ή μη έγκυρο αρχείο'); return; }
+  const hr=findHeaderRow(rows);
+  let headers=rows[hr], data=rows.slice(hr+1);
+  ({headers,rows:data}=trimCols(headers,data));
+  const map={
+    first:guess(headers,['Όνομα','Ονομα','First Name','First','Name']),
+    last :guess(headers,['Επίθετο','Επιθετο','Last Name','Last','Surname']),
+    full :guess(headers,['Ονοματεπώνυμο','Ονοματεπωνυμο','Full Name']),
+    order:'FL'
+  };
+  PART={rows:data,headers,map};
+  renderPartMap(); buildPartPersons();
+}
+function renderPartMap(){
+  const h=PART.headers,m=PART.map;
+  $('partMap').innerHTML=`
+    <div class="cell"><label class="fld">Όνομα</label><select data-k="first">${mapSelect(h,m.first)}</select></div>
+    <div class="cell"><label class="fld">Επίθετο</label><select data-k="last">${mapSelect(h,m.last)}</select></div>
+    <div class="cell"><label class="fld">…ή Ονοματεπώνυμο</label><select data-k="full">${mapSelect(h,m.full)}</select></div>`;
+  $('partMap').querySelectorAll('select').forEach(s=>s.addEventListener('change',e=>{
+    PART.map[e.target.dataset.k]=parseInt(e.target.value); buildPartPersons();
+  }));
+}
+function buildPartPersons(){
+  const m=PART.map;
+  PART.persons=PART.rows.map(row=>{
+    let first='',last='';
+    if(m.first>=0||m.last>=0){ first=row[m.first]||''; last=row[m.last]||''; }
+    else if(m.full>=0){ const sp=splitFull(row[m.full]||'',m.order); first=sp.first; last=sp.last; }
+    return makePerson(first,last,{raw:(collapseSpaces(first)+' '+collapseSpaces(last)).trim()});
+  }).filter(p=>p.display.trim());
+  $('partInfo').innerHTML=`Συμμετέχοντες: <b>${PART.persons.length}</b>`;
+  $('dropPart').classList.add('ok');
+  refreshRun();
+}
+
+/* ---------- tab select ---------- */
+$('tabRow').querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $('tabRow').querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  if(REG){ REG.tab=t.dataset.tab; $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons?REG.persons.length:0}</b> εγγραφές · tab: <b>${REG.tab}</b> (φίλτρο)`; }
+  else { pendingTab=t.dataset.tab; }
+}));
+let pendingTab=null;
+
+function refreshRun(){
+  const ok=REG&&REG.persons&&REG.persons.length&&PART&&PART.persons&&PART.persons.length;
+  $('runBtn').disabled=!ok;
+  $('engInfo').textContent=ok?`Έτοιμο: ${PART.persons.length} συμμετέχοντες × ${REG.persons.length} μητρώο`:'Φόρτωσε μητρώο + λίστα συμμετεχόντων.';
+}
+
+/* ---------- RUN ---------- */
+$('runBtn').addEventListener('click',()=>{
+  if(pendingTab && REG && !REG.tab){ REG.tab=pendingTab; }
+  rebuildAliasMap();
+  RESULTS=PART.persons.map(p=>{
+    const res=matchOne(p,REG.persons,ALIAS);
+    return {p,res,checked:res.status==='g',ekto:false};
+  });
+  renderResults();
+  $('resStep').classList.remove('hidden');
+  $('resStep').scrollIntoView({behavior:'smooth'});
+});
+
+function rebuildAliasMap(){
+  ALIAS={};
+  for(const key in ALIAS_STORE){
+    const id=ALIAS_STORE[key];
+    const idx=REG.persons.findIndex(r=>r.gLast===greekCanon(id.last)&&r.gFirst===greekCanon(id.first));
+    if(idx>=0) ALIAS[key]=idx;
+  }
+}
+
+/* ---------- render results ---------- */
+function badge(s){ return s==='g'?'<span class="badge g">ΠΡΑΣΙΝΟ 100%</span>':s==='y'?'<span class="badge y">ΚΙΤΡΙΝΟ</span>':'<span class="badge r">ΚΟΚΚΙΝΟ</span>'; }
+
+function renderResults(){
+  const T=$('resTable');
+  let cg=0,cy=0,cr=0;
+  let html='<thead><tr><th>#</th><th>Raw (φόρμα)</th><th>Κατάσταση</th><th>Αντιστοίχιση στο μητρώο</th><th style="text-align:center">✓</th></tr></thead><tbody>';
+  RESULTS.forEach((R,idx)=>{
+    const s=R.res.status; if(s==='g')cg++;else if(s==='y')cy++;else cr++;
+    const raw=escapeHtml(R.p.extra.raw||R.p.display);
+    let matchCell='';
+    if(s==='g'){
+      const r=REG.persons[R.res.pick];
+      matchCell=`<span class="matchcell">${escapeHtml(r.display)}</span> <span class="sim">${R.res.alias?'(alias)':Math.round(R.res.sim*100)+'%'}</span>`;
+    }else if(s==='y'){
+      matchCell=`<select class="cand" data-i="${idx}"><option value="-1">— διάλεξε —</option>`+
+        R.res.cands.map(c=>`<option value="${c.i}" ${c.i===R.res.pick?'selected':''}>${escapeHtml(REG.persons[c.i].display)} · ${Math.round(c.s*100)}%</option>`).join('')+
+        `</select>`;
+    }else{
+      matchCell=`<input class="srch" data-i="${idx}" list="reglist" placeholder="χειροκίνητη αναζήτηση…">
+        <div style="margin-top:5px"><button class="btn ghost sm ektobtn" data-i="${idx}">→ εκτός φάσης</button></div>`;
+    }
+    html+=`<tr class="${s}" data-row="${idx}">
+      <td>${idx+1}</td>
+      <td>${raw}</td>
+      <td>${badge(s)}${R.ekto?' <span class="pill" style="background:var(--redbd)">εκτός φάσης</span>':''}</td>
+      <td>${matchCell}</td>
+      <td style="text-align:center"><input type="checkbox" class="chkrow" data-i="${idx}" ${R.checked?'checked':''}></td>
+    </tr>`;
+  });
+  html+='</tbody>';
+  T.innerHTML=html;
+  // datalist for red manual search
+  if(!$('reglist')){ const dl=document.createElement('datalist'); dl.id='reglist'; document.body.appendChild(dl); }
+  $('reglist').innerHTML=REG.persons.map((r,i)=>`<option data-idx="${i}" value="${escapeHtml(r.display)}">`).join('');
+  // counts
+  $('counts').innerHTML=`<span class="pill t">Σύνολο ${RESULTS.length}</span>
+    <span class="pill g">Πράσινο ${cg}</span><span class="pill y">Κίτρινο ${cy}</span><span class="pill r">Κόκκινο ${cr}</span>`;
+  // wire
+  T.querySelectorAll('.cand').forEach(sel=>sel.addEventListener('change',e=>{
+    const i=+e.target.dataset.i, v=+e.target.value;
+    RESULTS[i].res.pick=v; RESULTS[i].checked=v>=0;
+    if(v>=0){ saveAlias(RESULTS[i].p, REG.persons[v]); }
+    RESULTS[i].manualPick=v; syncRowCheckbox(i,v>=0);
+  }));
+  T.querySelectorAll('.srch').forEach(inp=>inp.addEventListener('change',e=>{
+    const i=+e.target.dataset.i;
+    const opt=[...$('reglist').options].find(o=>o.value===e.target.value);
+    if(opt){ const idx=+opt.dataset.idx; RESULTS[i].res.pick=idx; RESULTS[i].res.status='y';
+      RESULTS[i].checked=true; saveAlias(RESULTS[i].p,REG.persons[idx]); renderResults(); }
+  }));
+  T.querySelectorAll('.chkrow').forEach(c=>c.addEventListener('change',e=>{ RESULTS[+e.target.dataset.i].checked=e.target.checked; }));
+  T.querySelectorAll('.ektobtn').forEach(b=>b.addEventListener('click',e=>{ RESULTS[+e.target.dataset.i].ekto=!RESULTS[+e.target.dataset.i].ekto; renderResults(); }));
+}
+function syncRowCheckbox(i,on){ const c=document.querySelector(`.chkrow[data-i="${i}"]`); if(c) c.checked=on; }
+
+function saveAlias(p,r){ ALIAS_STORE[p.gCanonLF]={last:r.last,first:r.first}; }
+
+/* ---------- EXPORT ---------- */
+function chosenRows(mode){
+  // mode: 'members' = matched (green/yellow picked) ; 'ekto' = red/εκτός φάσης
+  const onlyChecked=$('onlyChecked').checked;
+  const out=[];
+  RESULTS.forEach(R=>{
+    const picked=R.res.pick;
+    if(mode==='members'){
+      if(R.ekto) return;
+      if(picked<0||picked===undefined) return;
+      if(onlyChecked && !R.checked) return;
+      out.push({person:REG.persons[picked], raw:R.p});
+    }else{ // ekto
+      if(R.res.status==='r' || R.ekto){ out.push({person:null, raw:R.p}); }
+    }
+  });
+  return out;
+}
+function buildBlock(mode){
+  const rows=chosenRows(mode);
+  const shape=$('nameShape').value;
+  const wantAA=$('cAA').checked;
+  const src=$('colSrc').value;
+  // chosen extra registry columns (indices into REG.headers)
+  const extra=[...document.querySelectorAll('.excol:checked')].map(c=>+c.dataset.i);
+  const header=[];
+  if(wantAA) header.push('Α/Α');
+  if(shape==='split'){ header.push('Όνομα','Επίθετο'); } else { header.push('Ονοματεπώνυμο'); }
+  if(mode==='members') extra.forEach(i=>header.push(REG.headers[i]));
+  const body=rows.map((r,i)=>{
+    const per=r.person||r.raw;
+    const first=per.first, last=per.last;
+    const cell=[];
+    if(wantAA) cell.push(String(i+1));
+    if(shape==='split'){ cell.push(first,last); }
+    else if(shape==='full_FL'){ cell.push((first+' '+last).trim()); }
+    else { cell.push((last+' '+first).trim()); }
+    if(mode==='members'){
+      const row=(r.person&&r.person.extra&&r.person.extra.row)||[];
+      extra.forEach(idx=> cell.push(src==='registry'?collapseSpaces(row[idx]||''):''));
+    }
+    return cell;
+  });
+  return {header,body};
+}
+function toTSV(b){ return [b.header].concat(b.body).map(r=>r.join('\t')).join('\n'); }
+function toHTML(b){
+  const th=b.header.map(h=>`<th>${escapeHtml(h)}</th>`).join('');
+  const tr=b.body.map(r=>'<tr>'+r.map(c=>`<td>${escapeHtml(c)}</td>`).join('')+'</tr>').join('');
+  return `<table border="1" cellspacing="0" cellpadding="4"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+async function copyDual(html,tsv){
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html':new Blob([html],{type:'text/html'}),
+        'text/plain':new Blob([tsv],{type:'text/plain'})
+      })]);
+      return true;
+    }
+  }catch(e){}
+  // fallback: rich selection copy
+  try{
+    const div=document.createElement('div'); div.contentEditable=true;
+    div.style.position='fixed'; div.style.left='-9999px'; div.innerHTML=html; document.body.appendChild(div);
+    const rng=document.createRange(); rng.selectNodeContents(div);
+    const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
+    const ok=document.execCommand('copy'); sel.removeAllRanges(); div.remove(); return ok;
+  }catch(e){ return false; }
+}
+$('copyBtn').addEventListener('click',async()=>{
+  const b=buildBlock('members');
+  if(!b.body.length){ toast('Καμία αντιστοιχισμένη γραμμή για copy.'); return; }
+  const ok=await copyDual(toHTML(b),toTSV(b));
+  toast(ok?`Αντιγράφηκαν ${b.body.length} μέλη (HTML + TSV).`:'Αποτυχία αντιγραφής — δοκίμασε ξανά.');
+});
+$('copyEkto').addEventListener('click',async()=>{
+  const b=buildBlock('ekto');
+  if(!b.body.length){ toast('Δεν υπάρχει κόκκινο / εκτός φάσης.'); return; }
+  const ok=await copyDual(toHTML(b),toTSV(b));
+  toast(ok?`Αντιγράφηκαν ${b.body.length} «εκτός φάσης» (για το sheet).`:'Αποτυχία αντιγραφής.');
+});
+['nameShape','colSrc','cAA','onlyChecked'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',()=>{}); });
+
+/* ---------- ALIAS import/export ---------- */
+$('aliasExport').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(ALIAS_STORE,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='camp-members-alias.json'; a.click(); URL.revokeObjectURL(a.href);
+  toast('Εξήχθη ALIAS table (JSON).');
+});
+$('aliasImport').addEventListener('click',()=>$('fileAlias').click());
+$('fileAlias').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader(); rd.onload=()=>{ try{ Object.assign(ALIAS_STORE,JSON.parse(rd.result)); toast('Εισήχθη ALIAS table.'); }catch(x){ toast('Μη έγκυρο JSON.'); } };
+  rd.readAsText(f);
+});
+
+/* ---------- URL fetch (publish to web) ---------- */
+$('regUrlBtn').addEventListener('click',()=>{
+  const u=$('regUrl').value.trim(); if(!u) return;
+  fetch(u).then(r=>r.text()).then(t=>{ loadReg(t); toast('Φορτώθηκε από URL.'); })
+    .catch(()=>{ $('regUrlWarn').classList.remove('hidden'); toast('Απέτυχε το URL (πιθανό CORS σε file://).'); });
+});
+
+/* ---------- file readers ---------- */
+function readFile(f,cb){ const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsText(f,'utf-8'); }
+wireDrop('dropReg','fileReg',handleRegFile);
+wireDrop('dropPart','filePart',handlePartFile);
+
+/* ---------- privacy banner + local-only guard ---------- */
+(function guard(){
+  const ALLOWED=['76.life','www.76.life','as76-strvls.github.io','localhost','127.0.0.1',''];   // trusted hosts (edit if the app moves)
+  const proto=location.protocol, host=location.hostname;
+  const bn=$('privacyBanner'), tx=$('privacyText'), warn=$('hostWarn');
+  const base='Τα δεδομένα επεξεργάζονται 100% τοπικά στον browser σου και δεν αποστέλλονται πουθενά — το εργαλείο δεν κάνει καμία εξωτερική κλήση.';
+  if(proto==='file:'){
+    tx.textContent=base+' · Τρέχει ως τοπικό αρχείο.';
+  } else if(ALLOWED.includes(host)){
+    tx.textContent=base+' · Φιλοξενείται στο '+host+'.';
+  } else {
+    // hosted on a non-recognised domain → keep working but warn about access control
+    bn.style.background='var(--amberbg)'; bn.style.borderColor='var(--amberbd)'; bn.style.color='#7a5410';
+    tx.textContent=base;
+    warn.classList.remove('hidden');
+    warn.innerHTML='⚠ Μη αναγνωρισμένο domain (<b>'+escapeHtml(host)+'</b>). Το εργαλείο κρατά τα δεδομένα τοπικά, '
+      +'αλλά πριν φορτώσεις πραγματικά δεδομένα μελών βεβαιώσου ότι η σελίδα είναι κλειδωμένη με πρόσβαση '
+      +'σε επίπεδο διακομιστή (π.χ. .htpasswd / Basic Auth), όχι απλώς κωδικός σελίδας WordPress. '
+      +'Αν είναι δημόσια προσβάσιμη, μη φορτώνεις πραγματικά δεδομένα μελών.';
+  }
+})();
+
+refreshRun();
+})();}
+</script>
+</body>
+</html>
