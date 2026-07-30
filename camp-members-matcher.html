@@ -267,11 +267,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         </div>
         <div class="cell" style="flex:1 1 auto">
           <label class="fld">Αντιγραφή</label>
-          <button class="btn" id="copyBtn">⧉ Copy μπλοκ (HTML + TSV)</button>
+          <button class="btn" id="dlBtn">⬇ Κατέβασμα .xlsx (merged cells)</button>
+          <button class="btn ghost" id="copyBtn" style="margin-top:6px">⧉ Copy μπλοκ (TSV)</button>
           <button class="btn ghost" id="copyEkto" style="margin-top:6px">⇥ Βαθμοφόροι εκτός φάσης →</button>
         </div>
       </div>
-      <div class="legend">Το <b>Copy</b> γράφει ΔΥΟ formats: <code>text/html</code> (για Docs/Word — μένει η δομή, πετιέται το styling) και <code>text/plain</code> ως <b>TSV</b> (κολλάει καθαρά σε κελιά του ΣΠΚ ΔΔ v4 xlsx). Το «εκτός φάσης» βγάζει το κόκκινο subset ως paste-ready μπλοκ για το sheet «Βαθμοφόροι εκτός φάσης». Το module ΔΕΝ γράφει μόνο του στο Sheet.</div>
+      <div class="legend"><b>Μέλη:</b> μπαίνουν ΟΛΟΙ αυτόματα — ό,τι είναι <b>≥70%</b> με τα στοιχεία μητρώου (μένει χρωματισμένο), ό,τι <b>&lt;70%</b> με μόνο το Ονοματεπώνυμο της φόρμας και τα υπόλοιπα κελιά κενά (εκτός αν το κάνεις χειροκίνητα match). <b>Βαθμοφόροι</b> (tab Βαθμοφόροι): semi-auto — προτείνονται αλλά διαλέγεις με τα ✓. · <b>⬇ .xlsx</b> = έτοιμο μπλοκ με τα merged cells (ΕΓΓΡΑΦΕΣ layout) — άνοιξε & αντίγραψε τις γραμμές στο ΔΔ. <b>Copy (TSV)</b> = επικόλληση σε απλά κελιά. «Εκτός φάσης» = paste-ready subset. Το module ΔΕΝ γράφει μόνο του στο Sheet.</div>
 
       <div class="res-scroll" style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
         <table class="res" id="resTable"></table>
@@ -482,7 +483,7 @@ function personSim(p,r){
   return best;
 }
 
-const TH_GREEN=0.90, TH_AMBER=0.72, TH_BLOCK=0.62;
+const TH_GREEN=0.90, TH_AMBER=0.70, TH_BLOCK=0.62;   // ≥70% = auto opt-in
 
 /* core matcher: participant p against registry list R (already tab-filtered) */
 function matchOne(p, R, aliasMap){
@@ -760,7 +761,7 @@ $('runBtn').addEventListener('click',()=>{
   rebuildAliasMap();
   RESULTS=PART.persons.map(p=>{
     const res=matchOne(p,REG.persons,ALIAS);
-    return {p,res,checked:res.status==='g',ekto:false};
+    return {p,res,checked:res.status!=='r',ekto:false};   // ≥70% (πράσινο+κίτρινο) → auto opt-in
   });
   renderResults();
   $('resStep').classList.remove('hidden');
@@ -855,16 +856,19 @@ function saveAlias(p,r){ ALIAS_STORE[p.aliasKey||p.gCanonLF]={last:r.last,first:
 
 /* ---------- EXPORT ---------- */
 function chosenRows(mode){
-  // mode: 'members' = matched (green/yellow picked) ; 'ekto' = red/εκτός φάσης
-  const onlyChecked=$('onlyChecked').checked;
+  // mode: 'members' = μπλοκ μελών ; 'ekto' = εκτός φάσης
+  const leaders = REG && REG.tab==='Βαθμοφόροι';   // Βαθμοφόροι = semi-auto (επιλογή)
   const out=[];
   RESULTS.forEach(R=>{
     const picked=R.res.pick;
     if(mode==='members'){
       if(R.ekto) return;
-      if(picked<0||picked===undefined) return;
-      if(onlyChecked && !R.checked) return;
-      out.push({person:REG.persons[picked], raw:R.p});
+      if(picked>=0){
+        if(leaders && !R.checked) return;          // βαθμοφόροι: μόνο ό,τι έχεις επιλέξει
+        out.push({person:REG.persons[picked], raw:R.p});
+      } else if(!leaders){
+        out.push({person:null, raw:R.p, unmatched:true});  // <70% μέλος → raw όνομα + κενά
+      }
     }else{ // ekto
       if(R.res.status==='r' || R.ekto){ out.push({person:null, raw:R.p}); }
     }
@@ -887,12 +891,13 @@ function buildBlock(mode){
     const first=per.first, last=per.last;
     const cell=[];
     if(wantAA) cell.push(String(i+1));
-    if(shape==='split'){ cell.push(first,last); }
-    else if(shape==='full_FL'){ cell.push((first+' '+last).trim()); }
-    else { cell.push((last+' '+first).trim()); }
+    // unmatched (<70%) → κράτα το ΑΚΡΙΒΕΣ όνομα της φόρμας
+    const fullName = (!r.person && r.raw.extra && r.raw.extra.raw) ? collapseSpaces(r.raw.extra.raw)
+                    : (shape==='full_FL' ? (first+' '+last).trim() : (last+' '+first).trim());
+    if(shape==='split'){ cell.push(first,last); } else { cell.push(fullName); }
     if(mode==='members'){
       const row=(r.person&&r.person.extra&&r.person.extra.row)||[];
-      extra.forEach(idx=> cell.push(src==='registry'?collapseSpaces(row[idx]||''):''));
+      extra.forEach(idx=> cell.push((r.person&&src==='registry')?collapseSpaces(row[idx]||''):''));  // <70% → κενά
     }
     return cell;
   });
@@ -923,11 +928,52 @@ async function copyDual(html,tsv){
     const ok=document.execCommand('copy'); sel.removeAllRanges(); div.remove(); return ok;
   }catch(e){ return false; }
 }
+/* ---------- .xlsx export στο ΕΓΓΡΑΦΕΣ layout (merged cells) ---------- */
+const EG_COLS=[
+  {label:'Αριθμός Τριπλοτύπου',col:1,span:4,src:'Αριθμός Τριπλοτύπου'},
+  {label:'Αριθμός Μητρώου',col:5,span:1,src:'Αριθμός Μητρώου'},
+  {label:'Ονοματεπώνυμο',col:6,span:3,src:'__NAME__'},
+  {label:'Ημ. Γέννησης',col:9,span:1,src:'Ημ. Γέννησης'},
+  {label:'Κλιμάκιο',col:10,span:2,src:'Κλιμάκιο'},
+  {label:'Τμήμα',col:12,span:1,src:'__IDI__'},
+  {label:'Τηλέφωνο',col:13,span:2,src:'Τηλέφωνο'},
+  {label:'Όνομα Πατέρα',col:15,span:1,src:'__FATHER__'},
+  {label:'Όνομα Μητέρας',col:16,span:2,src:'Όνομα Μητέρας'},
+  {label:'Πληρωμή',col:18,span:1,src:'Πληρωμή'}
+];
+const EG_WIDTHS=[5,8,3,3,4,10,20,4,2,13,5,8,20,8,3,17,14,3,12];
+function egValue(r,c){
+  const per=r.person, raw=r.raw;
+  if(c.src==='__NAME__') return per? per.display : (raw.extra&&raw.extra.raw?collapseSpaces(raw.extra.raw):(collapseSpaces(raw.last+' '+raw.first)).trim());
+  if(!per) return '';                                   // <70% → μόνο όνομα, υπόλοιπα κενά
+  if(c.src==='__IDI__') return per.extra.idi||'';
+  if(c.src==='__FATHER__') return per.extra.father||'';
+  const idx=guess(per.extra.headers||REG.headers,[c.src]);
+  return idx>=0? collapseSpaces((per.extra.row||[])[idx]||'') : '';
+}
+function downloadEgrafes(mode){
+  if(typeof XLSX==='undefined'){ toast('Λείπει η βιβλιοθήκη xlsx.'); return; }
+  const rows=chosenRows(mode);
+  if(!rows.length){ toast('Καμία γραμμή για εξαγωγή.'); return; }
+  const MAXC=19, aoa=[];
+  const hrow=new Array(MAXC).fill(''); EG_COLS.forEach(c=>hrow[c.col]=c.label); aoa.push(hrow);
+  rows.forEach(r=>{ const row=new Array(MAXC).fill(''); EG_COLS.forEach(c=>row[c.col]=egValue(r,c)); aoa.push(row); });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  const merges=[]; for(let ri=0;ri<aoa.length;ri++) EG_COLS.forEach(c=>{ if(c.span>1) merges.push({s:{r:ri,c:c.col},e:{r:ri,c:c.col+c.span-1}}); });
+  ws['!merges']=merges; ws['!cols']=EG_WIDTHS.map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,mode==='ekto'?'Εκτός φάσης':'Μέλη');
+  const outbuf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([outbuf],{type:'application/octet-stream'}));
+  a.download=(mode==='ekto'?'Βαθμοφόροι-εκτός-φάσης':'Μπλοκ-Μελών-ΕΓΓΡΑΦΕΣ')+'.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+  toast(`Κατέβηκε .xlsx με merged cells (${rows.length} γραμμές).`);
+}
+$('dlBtn').addEventListener('click',()=>downloadEgrafes('members'));
+
 $('copyBtn').addEventListener('click',async()=>{
   const b=buildBlock('members');
-  if(!b.body.length){ toast('Καμία αντιστοιχισμένη γραμμή για copy.'); return; }
+  if(!b.body.length){ toast('Καμία γραμμή για copy.'); return; }
   const ok=await copyDual(toHTML(b),toTSV(b));
-  toast(ok?`Αντιγράφηκαν ${b.body.length} μέλη (HTML + TSV).`:'Αποτυχία αντιγραφής — δοκίμασε ξανά.');
+  toast(ok?`Αντιγράφηκαν ${b.body.length} γραμμές (HTML + TSV).`:'Αποτυχία αντιγραφής — δοκίμασε ξανά.');
 });
 $('copyEkto').addEventListener('click',async()=>{
   const b=buildBlock('ekto');
