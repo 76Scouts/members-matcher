@@ -808,8 +808,15 @@ function renderResults(){
   if(!$('reglist')){ const dl=document.createElement('datalist'); dl.id='reglist'; document.body.appendChild(dl); }
   $('reglist').innerHTML=REG.persons.map((r,i)=>claimed.has(i)?'':`<option data-idx="${i}" value="${escapeHtml(r.display)}">`).join('');
   // counts
-  $('counts').innerHTML=`<span class="pill t">Σύνολο ${RESULTS.length}</span>
-    <span class="pill g">Πράσινο ${cg}</span><span class="pill y">Κίτρινο ${cy}</span><span class="pill r">Κόκκινο ${cr}</span>`;
+  $('counts').innerHTML=`<span class="pill t">Σύνολο ${RESULTS.length}</span>`+
+    `<span class="pill g jump" data-j="g" style="cursor:pointer" title="Πήγαινε στα πράσινα">Πράσινο ${cg}</span>`+
+    `<span class="pill y jump" data-j="y" style="cursor:pointer" title="Πήγαινε στα κίτρινα">Κίτρινο ${cy}</span>`+
+    `<span class="pill r jump" data-j="r" style="cursor:pointer" title="Πήγαινε στα κόκκινα">Κόκκινο ${cr}</span>`+
+    `<span class="mini" style="margin-left:6px">· ✓ = μπαίνει στο export</span>`;
+  $('counts').querySelectorAll('.jump').forEach(p=>p.addEventListener('click',()=>{
+    const row=document.querySelector('#resTable tbody tr.'+p.dataset.j);
+    if(row) row.scrollIntoView({block:'center',behavior:'smooth'});
+  }));
   // wire
   T.querySelectorAll('.cand').forEach(sel=>sel.addEventListener('change',e=>{
     const i=+e.target.dataset.i, v=+e.target.value;
