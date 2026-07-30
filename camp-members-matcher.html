@@ -80,6 +80,31 @@
   .toast.show{opacity:1}
   .legend{font-size:11.5px;color:var(--muted);margin-top:6px}
   .warnbox{background:var(--amberbg);border:1px solid var(--amberbd);color:#7a5410;padding:8px 10px;border-radius:7px;font-size:12.5px;margin-top:8px}
+
+  /* ---------- MOBILE (≤640px): στοίβαξη + πίνακας ως κάρτες ---------- */
+  @media (max-width:640px){
+    body{font-size:13.5px}
+    header.top{padding:14px 16px}
+    header.top h1{font-size:17px}
+    header.top .sub{font-size:11px}
+    .wrap{padding:12px}
+    .step .body{padding:11px}
+    .col{flex:1 1 100%;min-width:0}
+    .btn{padding:9px 14px}                 /* πιο εύκολο tap */
+    .cfgrid .cell{min-width:0;flex:1 1 100%}
+    #copyBtn,#copyEkto{width:100%}
+    .toolbar{gap:8px}
+    /* πίνακας αποτελεσμάτων → κάρτες */
+    table.res{border:0}
+    table.res thead{display:none}
+    table.res tr{display:block;border:1px solid var(--line);border-radius:10px;margin:0 0 10px;padding:8px 10px;background:#fff}
+    tr.g td, tr.y td, tr.r td{background:transparent}
+    table.res tr.g{background:var(--greenbg)} table.res tr.y{background:var(--amberbg)} table.res tr.r{background:var(--redbg)}
+    table.res td{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;padding:4px 0;text-align:right}
+    table.res td::before{content:attr(data-label);font-weight:600;color:var(--muted);flex:0 0 34%;text-align:left}
+    table.res td .cand,table.res td .srch{flex:1 1 auto}
+    .res-scroll{max-height:none !important;border:0 !important;overflow:visible !important}
+  }
 </style>
 </head>
 <body>
@@ -214,7 +239,7 @@
       </div>
       <div class="legend">Το <b>Copy</b> γράφει ΔΥΟ formats: <code>text/html</code> (για Docs/Word — μένει η δομή, πετιέται το styling) και <code>text/plain</code> ως <b>TSV</b> (κολλάει καθαρά σε κελιά του ΣΠΚ ΔΔ v4 xlsx). Το «εκτός φάσης» βγάζει το κόκκινο subset ως paste-ready μπλοκ για το sheet «Βαθμοφόροι εκτός φάσης». Το module ΔΕΝ γράφει μόνο του στο Sheet.</div>
 
-      <div style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
+      <div class="res-scroll" style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
         <table class="res" id="resTable"></table>
       </div>
     </div>
@@ -785,11 +810,11 @@ function renderResults(){
         <div style="margin-top:5px"><button class="btn ghost sm ektobtn" data-i="${idx}">→ εκτός φάσης</button></div>`;
     }
     html+=`<tr class="${s}" data-row="${idx}">
-      <td>${idx+1}</td>
-      <td>${raw}</td>
-      <td>${badge(s)}${R.ekto?' <span class="pill" style="background:var(--redbd)">εκτός φάσης</span>':''}</td>
-      <td>${matchCell}</td>
-      <td style="text-align:center"><input type="checkbox" class="chkrow" data-i="${idx}" ${R.checked?'checked':''}></td>
+      <td data-label="#">${idx+1}</td>
+      <td data-label="Raw (φόρμα)">${raw}</td>
+      <td data-label="Κατάσταση">${badge(s)}${R.ekto?' <span class="pill" style="background:var(--redbd)">εκτός φάσης</span>':''}</td>
+      <td data-label="Μητρώο">${matchCell}</td>
+      <td data-label="✓" style="text-align:center"><input type="checkbox" class="chkrow" data-i="${idx}" ${R.checked?'checked':''}></td>
     </tr>`;
   });
   html+='</tbody>';
