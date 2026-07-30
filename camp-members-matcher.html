@@ -356,17 +356,39 @@ function sameGivenGroup(a,b){
 /* ================================================================
    Build a "person" object from first / last
    ================================================================ */
+function firstLetterCanon(s){ const c=greekCanon(s); return c?c[0]:''; }
+function extractYear(s){ const m=String(s||'').match(/(19|20)\d{2}/); return m?parseInt(m[0]):null; }
+/* strip a lone πατρώνυμο-initial ("Κ.") or a Jr/Sr suffix out of a written name */
+function parseNameExtras(first,last){
+  let init=null, rank=null;
+  const clean=s=>collapseSpaces(s).split(' ').filter(Boolean).filter(t=>{
+    const c=t.replace(/[.·]/g,'');
+    if(/^(jr|jnr|junior)$/i.test(c)){ rank='jr'; return false; }
+    if(/^(sr|snr|senior|πρεσβ)$/i.test(c)){ rank='sr'; return false; }
+    if(c.length===1 && /[a-zα-ωά-ώ]/i.test(c)){ if(!init) init=greekCanon(c); return false; }  // lone initial
+    return true;
+  }).join(' ');
+  return {first:clean(first), last:clean(last), init, rank};
+}
 function makePerson(first,last,extra){
+  extra=extra||{};
   first=collapseSpaces(first||''); last=collapseSpaces(last||'');
+  let pInit=null, rank=null;
+  if(extra.parseName){ const e=parseNameExtras(first,last); first=e.first; last=e.last; pInit=e.init; rank=e.rank; }
+  const gLF=greekCanon(last+' '+first);
   return {
     first,last,
     display:(last?last+' ':'')+first,
     gCanonFL:greekCanon(first+' '+last),
-    gCanonLF:greekCanon(last+' '+first),
+    gCanonLF:gLF,
     gFirst:greekCanon(first), gLast:greekCanon(last),
     pFirst:phonKey(first), pLast:phonKey(last),
     pSort:tokenSort(phonKey(first)+' '+phonKey(last)),
-    extra:extra||{}
+    father:extra.father||'', fatherInit:firstLetterCanon(extra.father||''),
+    birth:extra.birth||'', birthYear:extractYear(extra.birth),
+    pInit, rank,
+    aliasKey: gLF + (pInit?'|π'+pInit:'') + (rank?'|'+rank:''),
+    extra:extra
   };
 }
 
@@ -392,8 +414,8 @@ const TH_GREEN=0.90, TH_AMBER=0.72, TH_BLOCK=0.62;
 
 /* core matcher: participant p against registry list R (already tab-filtered) */
 function matchOne(p, R, aliasMap){
-  // alias hit → forced green
-  const ak = p.gCanonLF;
+  // alias hit → forced green (key includes πατρώνυμο/rank so ομώνυμα don't collide)
+  const ak = p.aliasKey || p.gCanonLF;
   if(aliasMap && aliasMap[ak]!==undefined){
     const idx=aliasMap[ak];
     if(R[idx]) return {status:'g', pick:idx, sim:1, cands:[{i:idx,s:1}], alias:true};
@@ -409,19 +431,33 @@ function matchOne(p, R, aliasMap){
   let scored=scan.map(i=>({i,s:personSim(p,R[i])}));
   scored.sort((a,b)=>b.s-a.s);
   const top=scored[0]||{i:-1,s:0};
-  const second=scored[1]||{i:-1,s:0};
-  let status,pick;
-  if(top.s>=TH_GREEN && (second.s < TH_GREEN - 0.001 || top.s>=0.999)){
-    status='g'; pick=top.i;
-  }else if(top.s>=TH_GREEN){                 // multiple ≥90 → ambiguous
-    status='y'; pick=top.i;
-  }else if(top.s>=TH_AMBER){
-    status='y'; pick=top.i;
-  }else{
-    status='r'; pick=-1;
-  }
   const cands = scored.filter(x=>x.s>=TH_BLOCK-0.1).slice(0,6);
   if(!cands.length && top.i>=0) cands.push(top);
+
+  // ΟΜΩΝΥΜΑ: πολλαπλά ισχυρά ματς → ξεχώρισε με πατρώνυμο-αρχικό ή Jr/Sr (έτος γέννησης)
+  const ties=scored.filter(x=>x.s>=TH_GREEN);
+  if(ties.length>1){
+    if(p.pInit){
+      const byInit=ties.filter(t=>R[t.i].fatherInit && R[t.i].fatherInit===p.pInit);
+      if(byInit.length===1) return {status:'g',pick:byInit[0].i,sim:byInit[0].s,cands,reason:'πατρώνυμο'};
+      if(byInit.length>1)  return {status:'y',pick:byInit[0].i,sim:byInit[0].s,cands:byInit,ambiguous:true};
+    }
+    if(p.rank){
+      const wy=ties.filter(t=>R[t.i].birthYear);
+      if(wy.length>=2){
+        wy.sort((a,b)=>R[a.i].birthYear-R[b.i].birthYear);
+        const pk = p.rank==='jr' ? wy[wy.length-1].i : wy[0].i;
+        return {status:'g',pick:pk,sim:1,cands,reason:(p.rank==='jr'?'νεότερος':'μεγαλύτερος')};
+      }
+    }
+    return {status:'y',pick:top.i,sim:top.s,cands:ties,ambiguous:true};   // needs human — δείξε πατέρα+έτος
+  }
+
+  // μοναδικό ισχυρό ή fuzzy
+  let status,pick;
+  if(top.s>=TH_GREEN){ status='g'; pick=top.i; }
+  else if(top.s>=TH_AMBER){ status='y'; pick=top.i; }
+  else { status='r'; pick=-1; }
   return {status,pick,sim:top.s,cands};
 }
 
@@ -582,7 +618,9 @@ function ingestRegRows(rows){
     full :guess(headers,['Ονοματεπώνυμο','Ονοματεπωνυμο','Full Name','Ον/μο']),
     idi  :guess(headers,['Τμήμα','Ιδιότητα','Idiotita']),
     eno  :guess(headers,['Ενωμοτία','Ενωμοτια','Αγέλη','Section','Κλιμάκιο']),
-    kath :guess(headers,['Καθήκον','Καθηκον','Ρόλος','Role','Duty'])
+    kath :guess(headers,['Καθήκον','Καθηκον','Ρόλος','Role','Duty']),
+    father:guess(headers,['Όνομα Πατέρα','Ονομα Πατερα','Πατρώνυμο','Όνομα Πατρός','Father']),
+    birth :guess(headers,['Ημ. Γέννησης','Ημερομηνία Γέννησης','Ημ Γεννησης','Γέννηση','Birth','DOB'])
   };
   REG={rows:data,headers,map,order:REG?REG.order:'FL',tab:pendingRegTab||(REG?REG.tab:null)};
   pendingRegTab=null;
@@ -611,7 +649,10 @@ function buildRegPersons(){
     let first='',last='';
     if(m.full>=0){ const sp=splitFull(row[m.full]||'',REG.order); first=sp.first; last=sp.last; }
     else if(m.first>=0||m.last>=0){ first=row[m.first]||''; last=row[m.last]||''; }
-    const extra={ idi:m.idi>=0?collapseSpaces(row[m.idi]||''):'', row:row, headers:REG.headers };
+    const extra={ idi:m.idi>=0?collapseSpaces(row[m.idi]||''):'',
+      father:m.father>=0?collapseSpaces(row[m.father]||''):'',
+      birth:m.birth>=0?collapseSpaces(row[m.birth]||''):'',
+      row:row, headers:REG.headers };
     return makePerson(first,last,extra);
   }).filter(p=>p.display.trim());
   $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons.length}</b> εγγραφές${REG.tab?` · tab: <b>${REG.tab}</b> (φίλτρο)`:''}`;
@@ -663,7 +704,7 @@ function buildPartPersons(){
     let first='',last='';
     if(m.first>=0||m.last>=0){ first=row[m.first]||''; last=row[m.last]||''; }
     else if(m.full>=0){ const sp=splitFull(row[m.full]||'',m.order); first=sp.first; last=sp.last; }
-    return makePerson(first,last,{raw:(collapseSpaces(first)+' '+collapseSpaces(last)).trim()});
+    return makePerson(first,last,{raw:(collapseSpaces(first)+' '+collapseSpaces(last)).trim(), parseName:true});
   }).filter(p=>p.display.trim());
   $('partInfo').innerHTML=`Συμμετέχοντες: <b>${PART.persons.length}</b>`;
   $('dropPart').classList.add('ok');
@@ -726,14 +767,18 @@ function renderResults(){
     const raw=escapeHtml(R.p.extra.raw||R.p.display);
     // available = not already claimed by ANOTHER row
     const free=i=> !claimed.has(i) || claimed.get(i)===idx;
+    // πατέρας + έτος για διάκριση ομωνύμων
+    const disamb=i=>{ const r=REG.persons[i]; const bits=[]; if(r.father) bits.push('πατ. '+r.father); if(r.birthYear) bits.push(String(r.birthYear)); return bits.length?' · '+bits.join(' · '):''; };
     let matchCell='';
     if(s==='g'){
       const r=REG.persons[R.res.pick];
-      matchCell=`<span class="matchcell">${escapeHtml(r.display)}</span> <span class="sim">${R.res.alias?'(alias)':Math.round(R.res.sim*100)+'%'}</span>`;
+      const note=R.res.alias?'(alias)':(R.res.reason?Math.round(R.res.sim*100)+'% · '+R.res.reason:Math.round(R.res.sim*100)+'%');
+      matchCell=`<span class="matchcell">${escapeHtml(r.display)}</span> <span class="sim">${note}${escapeHtml(disamb(R.res.pick))}</span>`;
     }else if(s==='y'){
       const opts=R.res.cands.filter(c=>free(c.i));
-      matchCell=`<select class="cand" data-i="${idx}"><option value="-1">— διάλεξε —</option>`+
-        opts.map(c=>`<option value="${c.i}" ${c.i===R.res.pick?'selected':''}>${escapeHtml(REG.persons[c.i].display)} · ${Math.round(c.s*100)}%</option>`).join('')+
+      matchCell=(R.res.ambiguous?'<div class="mini" style="color:var(--amber)">⚠ ομώνυμα — διάλεξε βάσει πατέρα/έτους</div>':'')+
+        `<select class="cand" data-i="${idx}"><option value="-1">— διάλεξε —</option>`+
+        opts.map(c=>`<option value="${c.i}" ${c.i===R.res.pick?'selected':''}>${escapeHtml(REG.persons[c.i].display)} · ${Math.round(c.s*100)}%${escapeHtml(disamb(c.i))}</option>`).join('')+
         `</select>`+(opts.length?'':' <span class="mini">(όλοι οι κοντινοί έχουν ήδη αντιστοιχιστεί)</span>');
     }else{
       matchCell=`<input class="srch" data-i="${idx}" list="reglist" placeholder="χειροκίνητη αναζήτηση…">
@@ -773,7 +818,7 @@ function renderResults(){
 }
 function syncRowCheckbox(i,on){ const c=document.querySelector(`.chkrow[data-i="${i}"]`); if(c) c.checked=on; }
 
-function saveAlias(p,r){ ALIAS_STORE[p.gCanonLF]={last:r.last,first:r.first}; }
+function saveAlias(p,r){ ALIAS_STORE[p.aliasKey||p.gCanonLF]={last:r.last,first:r.first}; }
 
 /* ---------- EXPORT ---------- */
 function chosenRows(mode){
