@@ -180,11 +180,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <div class="col">
           <label class="fld">Ποιο tab φόρτωσες; <b>(αυτό ΕΙΝΑΙ το φίλτρο — θα εξαχθεί μόνο η τομή του)</b></label>
           <div class="tabs" id="tabRow">
-            <div class="tab" data-tab="Όλοι">Όλοι</div>
-            <div class="tab" data-tab="Βαθμοφόροι">Βαθμοφόροι</div>
             <div class="tab" data-tab="Αγέλη">Αγέλη</div>
             <div class="tab" data-tab="Ομάδα">Ομάδα</div>
             <div class="tab" data-tab="Κοινότητα">Κοινότητα</div>
+            <div class="tab" data-tab="Δίκτυο">Δίκτυο</div>
+            <div class="tab" data-tab="Βαθμοφόροι">Βαθμοφόροι</div>
           </div>
           <div class="rmap" id="regMap"></div>
           <div class="mini" id="regInfo" style="margin-top:8px"></div>
@@ -560,8 +560,8 @@ async function readXlsx(ab){
 }
 
 /* ---- sheet→tab mapping (για workbook με πολλά φύλλα) ---- */
-const SHEET_TAB={'ΟΛΟΙ':'Όλοι','ΒΑΘΜ':'Βαθμοφόροι','ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
-function setTabFromSheet(name){ const t=SHEET_TAB[String(name).trim()]||(['Όλοι','Βαθμοφόροι','Αγέλη','Ομάδα','Κοινότητα'].includes(String(name).trim())?String(name).trim():null);
+const SHEET_TAB={'ΟΛΟΙ':'Όλοι','ΒΑΘΜ':'Βαθμοφόροι','ΑΣ':'Βαθμοφόροι','ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα','ΔΙΚΤΥΟ':'Δίκτυο','Δ':'Δίκτυο'};
+function setTabFromSheet(name){ const t=SHEET_TAB[String(name).trim()]||(['Όλοι','Βαθμοφόροι','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].includes(String(name).trim())?String(name).trim():null);
   if(t){ pendingRegTab=t; [...document.querySelectorAll('#tabRow .tab')].forEach(x=>x.classList.toggle('active',x.dataset.tab===t)); } }
 function extOf(f){ return (f.name.split('.').pop()||'').toLowerCase(); }
 const XLS_EXT=['xls','xlsx','xlsm','xlsb'];
@@ -569,10 +569,17 @@ async function handleRegFile(file){
   if(XLS_EXT.includes(extOf(file))){ let wb; try{ wb=await readXlsx(await file.arrayBuffer()); }catch(e){ toast('Αποτυχία ανάγνωσης αρχείου Excel.'); return; }
     if(wb.sheets.length>1){ const sel=$('sheetSel'); sel.innerHTML=wb.sheets.map((s,i)=>`<option value="${i}">${escapeHtml(s.name)}</option>`).join('');
       $('sheetPick').classList.remove('hidden');
-      const pick=async()=>{ const s=wb.sheets[+sel.value]; setTabFromSheet(s.name); ingestRegRows(await wb.rows(s.name)); };
+      const netSheet=wb.sheets.find(x=>greekCanon(x.name).includes('ΔΙΚΤΥΟ'));
+      const pick=async()=>{
+        const s=wb.sheets[+sel.value]; setTabFromSheet(s.name);
+        const extra=[];
+        // Αγέλη → φόρτωσε ΚΑΙ το Δίκτυο ως 2ο block
+        if(SHEET_TAB[String(s.name).trim()]==='Αγέλη' && netSheet && netSheet.name!==s.name){ extra.push({tab:'Δίκτυο', raw:await wb.rows(netSheet.name)}); }
+        ingestRegRows(await wb.rows(s.name), extra);
+      };
       sel.onchange=pick;
       // προεπίλεξε ΓΕΜΑΤΟ φύλλο-τμήμα (όχι κενό tab)
-      const isSect=n=>['ΚΑ','ΟΠ','ΑΛ','ΒΑΘΜ','Κοινότητα','Ομάδα','Αγέλη','Βαθμοφόροι'].includes(String(n).trim());
+      const isSect=n=>['ΚΑ','ΟΠ','ΑΛ','ΒΑΘΜ','ΑΣ','ΔΙΚΤΥΟ','Κοινότητα','Ομάδα','Αγέλη','Βαθμοφόροι','Δίκτυο'].includes(String(n).trim());
       const counts=await Promise.all(wb.sheets.map(s=>wb.rows(s.name).then(r=>r.length)));
       let best=0,bestScore=-1;
       wb.sheets.forEach((s,i)=>{ const sc=counts[i]+((isSect(s.name)&&counts[i]>0)?1e6:0); if(sc>bestScore){bestScore=sc;best=i;} });
@@ -635,11 +642,13 @@ function splitFull(s,order){
 
 /* ---------- Μητρώο load ---------- */
 function loadReg(text){ ingestRegRows(parseCSV(text)); }
-function ingestRegRows(rows){
+function processSheet(rawRows){   // header-detect + trim → {headers, rows}
+  const hr=findHeaderRow(rawRows); let headers=rawRows[hr], data=rawRows.slice(hr+1);
+  return trimCols(headers,data);
+}
+function ingestRegRows(rows, extraSheets){
   if(!rows||rows.length<1){ toast('Άδειο ή μη έγκυρο αρχείο'); return; }
-  const hr=findHeaderRow(rows);
-  let headers=rows[hr], data=rows.slice(hr+1);
-  ({headers,rows:data}=trimCols(headers,data));
+  const {headers,rows:data}=processSheet(rows);
   const map={
     first:guess(headers,['Όνομα','Ονομα','First Name','First','Μικρό όνομα']),
     last :guess(headers,['Επίθετο','Επιθετο','Last Name','Last','Surname']),
@@ -650,7 +659,9 @@ function ingestRegRows(rows){
     father:guess(headers,['Όνομα Πατέρα','Ονομα Πατερα','Πατρώνυμο','Όνομα Πατρός','Father']),
     birth :guess(headers,['Ημ. Γέννησης','Ημερομηνία Γέννησης','Ημ Γεννησης','Γέννηση','Birth','DOB'])
   };
-  REG={rows:data,headers,map,order:REG?REG.order:'FL',tab:pendingRegTab||(REG?REG.tab:null)};
+  // δεύτερα blocks (π.χ. Δίκτυο στην Αγέλη) — ίδιο ΕΓΓΡΑΦΕΣ layout
+  const extra=(extraSheets||[]).map(es=>{ const p=processSheet(es.raw); return {tab:es.tab, rows:p.rows, headers:p.headers}; }).filter(e=>e.rows.length);
+  REG={rows:data,headers,map,extra,order:REG?REG.order:'FL',tab:pendingRegTab||(REG?REG.tab:null)};
   pendingRegTab=null;
   renderRegMap();
   buildRegPersons();
@@ -673,7 +684,7 @@ function renderRegMap(){
 }
 function buildRegPersons(){
   const m=REG.map;
-  REG.persons=REG.rows.map(row=>{
+  const build=(rows,headers,src,role)=> rows.map(row=>{
     let first='',last='';
     if(m.full>=0){ const sp=splitFull(row[m.full]||'',REG.order); first=sp.first; last=sp.last; }
     else if(m.first>=0||m.last>=0){ first=row[m.first]||''; last=row[m.last]||''; }
@@ -681,10 +692,13 @@ function buildRegPersons(){
       father:m.father>=0?collapseSpaces(row[m.father]||''):'',
       birth:m.birth>=0?collapseSpaces(row[m.birth]||''):'',
       orig:m.full>=0?row[m.full]:'',
-      row:row, headers:REG.headers };
+      row:row, headers:headers, src:src, role:role };
     return makePerson(first,last,extra);
   }).filter(p=>p.display.trim());
-  $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons.length}</b> εγγραφές${REG.tab?` · tab: <b>${REG.tab}</b> (φίλτρο)`:''}`;
+  REG.persons=build(REG.rows, REG.headers, REG.tab||'', 'section');
+  (REG.extra||[]).forEach(ex=>{ REG.persons=REG.persons.concat(build(ex.rows, ex.headers, ex.tab, 'extra')); });
+  const extraN=REG.persons.filter(p=>p.extra.role==='extra').length;
+  $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons.length}</b> εγγραφές${REG.tab?` · tab: <b>${REG.tab}</b> (φίλτρο)`:''}${extraN?` · <b>+${extraN}</b> Δίκτυο (2ο block)`:''}`;
   $('dropReg').classList.add('ok');
   refreshRun();
 }
@@ -761,7 +775,8 @@ $('runBtn').addEventListener('click',()=>{
   rebuildAliasMap();
   RESULTS=PART.persons.map(p=>{
     const res=matchOne(p,REG.persons,ALIAS);
-    return {p,res,checked:res.status!=='r',ekto:false};   // ≥70% (πράσινο+κίτρινο) → auto opt-in
+    const isExtra = res.pick>=0 && REG.persons[res.pick].extra.role==='extra';   // Δίκτυο = «select from» (όχι auto)
+    return {p,res,checked:(res.status!=='r' && !isExtra),ekto:false};   // τμήμα ≥70% → auto opt-in · Δίκτυο → επιλογή
   });
   renderResults();
   $('resStep').classList.remove('hidden');
@@ -798,11 +813,13 @@ function renderResults(){
     const free=i=> !claimed.has(i) || claimed.get(i)===idx;
     // πατέρας + έτος για διάκριση ομωνύμων
     const disamb=i=>{ const r=REG.persons[i]; const bits=[]; if(r.father) bits.push('πατ. '+r.father); if(r.birthYear) bits.push(String(r.birthYear)); return bits.length?' · '+bits.join(' · '):''; };
+    // pill για το 2ο block (Δίκτυο)
+    const srcPill=i=>(i>=0 && REG.persons[i].extra.role==='extra') ? ` <span style="font-size:10px;font-weight:700;color:#1554b0;background:#e6f0ff;border:1px solid #b9d3f5;border-radius:5px;padding:1px 6px">${escapeHtml(REG.persons[i].extra.src||'2ο block')}</span>` : '';
     let matchCell='';
     if(s==='g'){
       const r=REG.persons[R.res.pick];
       const note=R.res.alias?'(alias)':(R.res.reason?Math.round(R.res.sim*100)+'% · '+R.res.reason:Math.round(R.res.sim*100)+'%');
-      matchCell=`<span class="matchcell">${escapeHtml(r.display)}</span> <span class="sim">${note}${escapeHtml(disamb(R.res.pick))}</span>`;
+      matchCell=`<span class="matchcell">${escapeHtml(r.display)}</span>${srcPill(R.res.pick)} <span class="sim">${note}${escapeHtml(disamb(R.res.pick))}</span>`;
     }else if(s==='y'){
       const opts=R.res.cands.filter(c=>free(c.i));
       matchCell=(R.res.ambiguous?'<div class="mini" style="color:var(--amber)">⚠ ομώνυμα — διάλεξε βάσει πατέρα/έτους</div>':'')+
@@ -864,10 +881,9 @@ function chosenRows(mode){
     if(mode==='members'){
       if(R.ekto) return;
       if(picked>=0){
-        if(leaders && !R.checked) return;          // βαθμοφόροι: μόνο ό,τι έχεις επιλέξει
-        out.push({person:REG.persons[picked], raw:R.p});
-      } else if(!leaders){
-        out.push({person:null, raw:R.p, unmatched:true});  // <70% μέλος → raw όνομα + κενά
+        if(R.checked) out.push({person:REG.persons[picked], raw:R.p});   // opt-in (τσεκαρισμένο)
+      } else {
+        out.push({person:null, raw:R.p, unmatched:true});  // <70% → raw όνομα + κενά
       }
     }else{ // ekto
       if(R.res.status==='r' || R.ekto){ out.push({person:null, raw:R.p}); }
