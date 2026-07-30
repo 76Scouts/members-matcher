@@ -242,6 +242,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       </div>
       <div class="legend">Το export είναι <b>πάντα</b> στο layout του φακέλου (ΕΓΓΡΑΦΕΣ, με τα merged cells) — το <b>.xlsx</b> το ανοίγεις και αντιγράφεις τις γραμμές στο ΔΔ. <b>≥70%</b> → με στοιχεία μητρώου (χρωματισμένο)· <b>&lt;70%</b> → μόνο Ονοματεπώνυμο φόρμας + κενά (εκτός αν χειροκίνητο match). Στους <b>Βαθμοφόρους</b> δεν μπαίνει στήλη «Τμήμα».</div>
 
+      <div style="margin:10px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input id="manualName" type="text" placeholder="Ονοματεπώνυμο εκτός λίστας…" style="max-width:300px">
+        <button class="btn ghost sm" id="manualAdd">➕ Πρόσθεσε (μόνο όνομα)</button>
+        <span class="mini">για κάποιον που ήρθε αλλά δεν είναι στη λίστα — μπαίνει στο export με μόνο το όνομα, τα υπόλοιπα τα βάζεις μετά.</span>
+      </div>
+
       <div class="res-scroll" style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
         <table class="res" id="resTable"></table>
       </div>
@@ -946,6 +952,17 @@ $('copyEkto').addEventListener('click',async()=>{
   const ok=await copyDual(toHTML(b),toTSV(b));
   toast(ok?`Αντιγράφηκαν ${b.body.length} «εκτός φάσης» (για το sheet).`:'Αποτυχία αντιγραφής.');
 });
+
+/* ---------- χειροκίνητη προσθήκη ατόμου εκτός λίστας (μόνο όνομα) ---------- */
+function addManual(){
+  const name=collapseSpaces($('manualName').value); if(!name){ toast('Γράψε ονοματεπώνυμο.'); return; }
+  const sp=splitFull(name,'FL');
+  const p=makePerson(sp.first,sp.last,{raw:name});
+  RESULTS.push({p,res:{status:'r',pick:-1,cands:[]},checked:true,ekto:false});
+  $('manualName').value=''; renderResults(); toast('Προστέθηκε (μόνο όνομα): '+name);
+}
+$('manualAdd').addEventListener('click',addManual);
+$('manualName').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
 
 /* ---------- ALIAS import/export ---------- */
 $('aliasExport').addEventListener('click',()=>{
