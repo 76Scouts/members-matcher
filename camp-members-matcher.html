@@ -178,15 +178,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
           <div class="warnbox hidden" id="regUrlWarn">Αν το URL δεν φορτώνει από <code>file://</code> (CORS), κατέβασε το CSV/XLSX και ρίξ' το με drag-drop.</div>
         </div>
         <div class="col">
-          <label class="fld">Ποιο tab φόρτωσες; <b>(αυτό ΕΙΝΑΙ το φίλτρο — θα εξαχθεί μόνο η τομή του)</b></label>
-          <div class="tabs" id="tabRow">
-            <div class="tab" data-tab="Αγέλη">Αγέλη</div>
-            <div class="tab" data-tab="Ομάδα">Ομάδα</div>
-            <div class="tab" data-tab="Κοινότητα">Κοινότητα</div>
-            <div class="tab" data-tab="Δίκτυο">Δίκτυο</div>
-            <div class="tab" data-tab="Βαθμοφόροι">Βαθμοφόροι</div>
-          </div>
-          <div class="rmap" id="regMap"></div>
+          <label class="fld">Τμήμα</label>
+          <div class="mini">Διάλεξε το τμήμα από τον <b>επιλογέα φύλλου</b> (αριστερά, όταν το αρχείο έχει πολλά tabs). Στην <b>Αγέλη</b> φορτώνεται αυτόματα και το <b>Δίκτυο</b> ως 2ο block. Οι στήλες αναγνωρίζονται μόνες τους (ΕΓΓΡΑΦΕΣ).</div>
           <div class="mini" id="regInfo" style="margin-top:8px"></div>
         </div>
       </div>
@@ -206,7 +199,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
           </div>
         </div>
         <div class="col">
-          <div class="rmap" id="partMap"></div>
+          <div class="mini">Ανιχνεύει μόνο του τις στήλες Όνομα/Επίθετο (ή Ονοματεπώνυμο).</div>
           <div class="mini" id="partInfo" style="margin-top:8px"></div>
         </div>
       </div>
@@ -243,36 +236,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <div class="toolbar">
         <div class="counts" id="counts"></div>
         <span class="spacer"></span>
-        <label class="chk"><input type="checkbox" id="onlyChecked"> Μόνο τσεκαρισμένα στο copy</label>
+        <button class="btn" id="dlBtn">⬇ Κατέβασμα .xlsx (μπλοκ ΔΔ, merged cells)</button>
+        <button class="btn ghost" id="copyBtn">⧉ Copy (TSV)</button>
+        <button class="btn ghost" id="copyEkto">⇥ Εκτός φάσης →</button>
       </div>
-
-      <div class="cfgrid" style="margin:6px 0 12px;padding:10px;background:var(--light);border-radius:8px">
-        <div class="cell">
-          <label class="fld">Μορφή ονόματος (στήλη «Ονοματεπώνυμο»)</label>
-          <select id="nameShape">
-            <option value="full_FL">Ονοματεπώνυμο (Όνομα Επίθετο)</option>
-            <option value="full_LF">Ονοματεπώνυμο (Επίθετο Όνομα)</option>
-            <option value="split">Χωριστά: Όνομα | Επίθετο</option>
-          </select>
-          <div class="chk" style="margin-top:8px"><input type="checkbox" id="cAA" checked> Στήλη Α/Α μπροστά</div>
-        </div>
-        <div class="cell" style="flex:2 1 320px">
-          <label class="fld">Επιπλέον στήλες από το Μητρώο (μέσω match)</label>
-          <div id="extraCols" style="display:flex;flex-wrap:wrap;gap:4px 14px"><span class="mini">Φόρτωσε πρώτα το μητρώο…</span></div>
-          <label class="fld" style="margin-top:6px">Πηγή τιμών</label>
-          <select id="colSrc">
-            <option value="registry">Από το Μητρώο</option>
-            <option value="blank">Κενές (τις γεμίζω μετά στο ΣΠΚ)</option>
-          </select>
-        </div>
-        <div class="cell" style="flex:1 1 auto">
-          <label class="fld">Αντιγραφή</label>
-          <button class="btn" id="dlBtn">⬇ Κατέβασμα .xlsx (merged cells)</button>
-          <button class="btn ghost" id="copyBtn" style="margin-top:6px">⧉ Copy μπλοκ (TSV)</button>
-          <button class="btn ghost" id="copyEkto" style="margin-top:6px">⇥ Βαθμοφόροι εκτός φάσης →</button>
-        </div>
-      </div>
-      <div class="legend"><b>Μέλη:</b> μπαίνουν ΟΛΟΙ αυτόματα — ό,τι είναι <b>≥70%</b> με τα στοιχεία μητρώου (μένει χρωματισμένο), ό,τι <b>&lt;70%</b> με μόνο το Ονοματεπώνυμο της φόρμας και τα υπόλοιπα κελιά κενά (εκτός αν το κάνεις χειροκίνητα match). <b>Βαθμοφόροι</b> (tab Βαθμοφόροι): semi-auto — προτείνονται αλλά διαλέγεις με τα ✓. · <b>⬇ .xlsx</b> = έτοιμο μπλοκ με τα merged cells (ΕΓΓΡΑΦΕΣ layout) — άνοιξε & αντίγραψε τις γραμμές στο ΔΔ. <b>Copy (TSV)</b> = επικόλληση σε απλά κελιά. «Εκτός φάσης» = paste-ready subset. Το module ΔΕΝ γράφει μόνο του στο Sheet.</div>
+      <div class="legend">Το export είναι <b>πάντα</b> στο layout του φακέλου (ΕΓΓΡΑΦΕΣ, με τα merged cells) — το <b>.xlsx</b> το ανοίγεις και αντιγράφεις τις γραμμές στο ΔΔ. <b>≥70%</b> → με στοιχεία μητρώου (χρωματισμένο)· <b>&lt;70%</b> → μόνο Ονοματεπώνυμο φόρμας + κενά (εκτός αν χειροκίνητο match). Στους <b>Βαθμοφόρους</b> δεν μπαίνει στήλη «Τμήμα».</div>
 
       <div class="res-scroll" style="overflow:auto;max-height:70vh;margin-top:12px;border:1px solid var(--line);border-radius:8px">
         <table class="res" id="resTable"></table>
@@ -668,6 +636,7 @@ function ingestRegRows(rows, extraSheets){
   buildExportCols();
 }
 function renderRegMap(){
+  if(!$('regMap')) return;                 // panel αφαιρέθηκε — auto-detect μόνο
   const h=REG.headers, m=REG.map;
   $('regMap').innerHTML=`
     <div class="cell"><label class="fld">Ονοματεπώνυμο (μία στήλη)</label><select data-k="full">${mapSelect(h,m.full)}</select></div>
@@ -732,6 +701,7 @@ function ingestPartRows(rows){
   renderPartMap(); buildPartPersons();
 }
 function renderPartMap(){
+  if(!$('partMap')) return;                 // panel αφαιρέθηκε — auto-detect μόνο
   const h=PART.headers,m=PART.map;
   $('partMap').innerHTML=`
     <div class="cell"><label class="fld">Όνομα</label><select data-k="first">${mapSelect(h,m.first)}</select></div>
@@ -754,13 +724,7 @@ function buildPartPersons(){
   refreshRun();
 }
 
-/* ---------- tab select ---------- */
-$('tabRow').querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  $('tabRow').querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
-  if(REG){ REG.tab=t.dataset.tab; $('regInfo').innerHTML=`Μητρώο: <b>${REG.persons?REG.persons.length:0}</b> εγγραφές · tab: <b>${REG.tab}</b> (φίλτρο)`; }
-  else { pendingTab=t.dataset.tab; }
-}));
+/* ---------- tab select (τα chips αφαιρέθηκαν — ο επιλογέας φύλλου ορίζει το τμήμα) ---------- */
 let pendingTab=null;
 
 function refreshRun(){
@@ -891,34 +855,6 @@ function chosenRows(mode){
   });
   return out;
 }
-function buildBlock(mode){
-  const rows=chosenRows(mode);
-  const shape=$('nameShape').value;
-  const wantAA=$('cAA').checked;
-  const src=$('colSrc').value;
-  // chosen extra registry columns (indices into REG.headers)
-  const extra=[...document.querySelectorAll('.excol:checked')].map(c=>+c.dataset.i);
-  const header=[];
-  if(wantAA) header.push('Α/Α');
-  if(shape==='split'){ header.push('Όνομα','Επίθετο'); } else { header.push('Ονοματεπώνυμο'); }
-  if(mode==='members') extra.forEach(i=>header.push(REG.headers[i]));
-  const body=rows.map((r,i)=>{
-    const per=r.person||r.raw;
-    const first=per.first, last=per.last;
-    const cell=[];
-    if(wantAA) cell.push(String(i+1));
-    // unmatched (<70%) → κράτα το ΑΚΡΙΒΕΣ όνομα της φόρμας
-    const fullName = (!r.person && r.raw.extra && r.raw.extra.raw) ? collapseSpaces(r.raw.extra.raw)
-                    : (shape==='full_FL' ? (first+' '+last).trim() : (last+' '+first).trim());
-    if(shape==='split'){ cell.push(first,last); } else { cell.push(fullName); }
-    if(mode==='members'){
-      const row=(r.person&&r.person.extra&&r.person.extra.row)||[];
-      extra.forEach(idx=> cell.push((r.person&&src==='registry')?collapseSpaces(row[idx]||''):''));  // <70% → κενά
-    }
-    return cell;
-  });
-  return {header,body};
-}
 function toTSV(b){ return [b.header].concat(b.body).map(r=>r.join('\t')).join('\n'); }
 function toHTML(b){
   const th=b.header.map(h=>`<th>${escapeHtml(h)}</th>`).join('');
@@ -958,6 +894,12 @@ const EG_COLS=[
   {label:'Πληρωμή',col:18,span:1,src:'Πληρωμή'}
 ];
 const EG_WIDTHS=[5,8,3,3,4,10,20,4,2,13,5,8,20,8,3,17,14,3,12];
+/* στους Βαθμοφόρους (ΑΣ) φεύγει η στήλη «Τμήμα» — εκτός σκοπού */
+function egCols(){ const leaders=REG&&REG.tab==='Βαθμοφόροι'; return leaders?EG_COLS.filter(c=>c.src!=='__IDI__'):EG_COLS; }
+function buildEgrafesRows(mode){
+  const rows=chosenRows(mode), cols=egCols();
+  return { header:cols.map(c=>c.label), body:rows.map(r=>cols.map(c=>String(egValue(r,c)))) };
+}
 function egValue(r,c){
   const per=r.person, raw=r.raw;
   if(c.src==='__NAME__') return per? per.display : (raw.extra&&raw.extra.raw?collapseSpaces(raw.extra.raw):(collapseSpaces(raw.last+' '+raw.first)).trim());
@@ -971,11 +913,11 @@ function downloadEgrafes(mode){
   if(typeof XLSX==='undefined'){ toast('Λείπει η βιβλιοθήκη xlsx.'); return; }
   const rows=chosenRows(mode);
   if(!rows.length){ toast('Καμία γραμμή για εξαγωγή.'); return; }
-  const MAXC=19, aoa=[];
-  const hrow=new Array(MAXC).fill(''); EG_COLS.forEach(c=>hrow[c.col]=c.label); aoa.push(hrow);
-  rows.forEach(r=>{ const row=new Array(MAXC).fill(''); EG_COLS.forEach(c=>row[c.col]=egValue(r,c)); aoa.push(row); });
+  const cols=egCols(), MAXC=19, aoa=[];
+  const hrow=new Array(MAXC).fill(''); cols.forEach(c=>hrow[c.col]=c.label); aoa.push(hrow);
+  rows.forEach(r=>{ const row=new Array(MAXC).fill(''); cols.forEach(c=>row[c.col]=egValue(r,c)); aoa.push(row); });
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  const merges=[]; for(let ri=0;ri<aoa.length;ri++) EG_COLS.forEach(c=>{ if(c.span>1) merges.push({s:{r:ri,c:c.col},e:{r:ri,c:c.col+c.span-1}}); });
+  const merges=[]; for(let ri=0;ri<aoa.length;ri++) cols.forEach(c=>{ if(c.span>1) merges.push({s:{r:ri,c:c.col},e:{r:ri,c:c.col+c.span-1}}); });
   ws['!merges']=merges; ws['!cols']=EG_WIDTHS.map(w=>({wch:w}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,mode==='ekto'?'Εκτός φάσης':'Μέλη');
   const outbuf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
@@ -986,18 +928,17 @@ function downloadEgrafes(mode){
 $('dlBtn').addEventListener('click',()=>downloadEgrafes('members'));
 
 $('copyBtn').addEventListener('click',async()=>{
-  const b=buildBlock('members');
+  const b=buildEgrafesRows('members');
   if(!b.body.length){ toast('Καμία γραμμή για copy.'); return; }
   const ok=await copyDual(toHTML(b),toTSV(b));
-  toast(ok?`Αντιγράφηκαν ${b.body.length} γραμμές (HTML + TSV).`:'Αποτυχία αντιγραφής — δοκίμασε ξανά.');
+  toast(ok?`Αντιγράφηκαν ${b.body.length} γραμμές (TSV).`:'Αποτυχία αντιγραφής — δοκίμασε ξανά.');
 });
 $('copyEkto').addEventListener('click',async()=>{
-  const b=buildBlock('ekto');
+  const b=buildEgrafesRows('ekto');
   if(!b.body.length){ toast('Δεν υπάρχει κόκκινο / εκτός φάσης.'); return; }
   const ok=await copyDual(toHTML(b),toTSV(b));
   toast(ok?`Αντιγράφηκαν ${b.body.length} «εκτός φάσης» (για το sheet).`:'Αποτυχία αντιγραφής.');
 });
-['nameShape','colSrc','cAA','onlyChecked'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',()=>{}); });
 
 /* ---------- ALIAS import/export ---------- */
 $('aliasExport').addEventListener('click',()=>{
