@@ -437,7 +437,7 @@ function makePerson(first,last,extra){
   const gLF=greekCanon(last+' '+first);
   return {
     first,last,
-    display:(last?last+' ':'')+first,
+    display: extra.orig ? collapseSpaces(extra.orig) : (last?last+' ':'')+first,
     gCanonFL:greekCanon(first+' '+last),
     gCanonLF:gLF,
     gFirst:greekCanon(first), gLast:greekCanon(last),
@@ -451,6 +451,18 @@ function makePerson(first,last,extra){
   };
 }
 
+/* όλες οι λέξεις ενός ονόματος (όνομα+επίθετο) → phonKey ανά λέξη (για διπλά/ανακατεμένα ονόματα) */
+function allPhonTokens(person){
+  if(person._toks) return person._toks;
+  return person._toks=(String(person.first)+' '+String(person.last)).split(/\s+/).map(s=>s.trim()).filter(Boolean).map(phonKey).filter(Boolean);
+}
+/* token-set similarity: κάθε λέξη ταιριάζει με την καλύτερη λέξη της άλλης πλευράς, ανεξαρτήτως σειράς/θέσης */
+function tokenSetSim(p,r){
+  const a=allPhonTokens(p), b=allPhonTokens(r);
+  if(!a.length||!b.length) return 0;
+  const dir=(x,y)=> x.reduce((s,t)=>s+Math.max.apply(null,y.map(u=>ratio(t,u))),0)/x.length;
+  return Math.min(dir(a,b),dir(b,a));   // συντηρητικό (min και των δύο κατευθύνσεων)
+}
 /* similarity between a participant and a registry person (0..1) */
 function personSim(p,r){
   // exact canonical, either order
@@ -463,9 +475,10 @@ function personSim(p,r){
   if(surn>=0.86 && (sameGivenGroup(p.first,r.first)||sameGivenGroup(p.first,r.last))) return 0.97;
   // fuzzy token-sort on phonetic
   let best=ratio(p.pSort,r.pSort);
-  // also straight both-orders phonetic
   best=Math.max(best, ratio(p.pFirst+p.pLast, r.pFirst+r.pLast));
   best=Math.max(best, ratio(p.pFirst+p.pLast, r.pLast+r.pFirst));
+  // token-set: πιάνει διπλά βαφτιστικά & ανακατεμένες λέξεις (Μαρία Ειρήνη Αργυρού ↔ Ειρήνη Μαρία Αργυρίου)
+  best=Math.max(best, tokenSetSim(p,r));
   return best;
 }
 
@@ -479,15 +492,8 @@ function matchOne(p, R, aliasMap){
     const idx=aliasMap[ak];
     if(R[idx]) return {status:'g', pick:idx, sim:1, cands:[{i:idx,s:1}], alias:true};
   }
-  // blocking by surname (phonetic), fall back to full scan
-  let block=[];
-  for(let i=0;i<R.length;i++){
-    const r=R[i];
-    const sur=Math.max(ratio(p.pLast,r.pLast), ratio(p.pLast,r.pFirst), ratio(p.pFirst,r.pLast));
-    if(sur>=TH_BLOCK) block.push(i);
-  }
-  const scan = block.length? block : R.map((_,i)=>i);
-  let scored=scan.map(i=>({i,s:personSim(p,R[i])}));
+  // σάρωση ΟΛΟΥ του μητρώου (χωρίς surname-blocking) — πιάνει και ανακατεμένα διπλά ονόματα
+  let scored=R.map((_,i)=>({i,s:personSim(p,R[i])}));
   scored.sort((a,b)=>b.s-a.s);
   const top=scored[0]||{i:-1,s:0};
   const cands = scored.filter(x=>x.s>=TH_BLOCK-0.1).slice(0,6);
@@ -673,6 +679,7 @@ function buildRegPersons(){
     const extra={ idi:m.idi>=0?collapseSpaces(row[m.idi]||''):'',
       father:m.father>=0?collapseSpaces(row[m.father]||''):'',
       birth:m.birth>=0?collapseSpaces(row[m.birth]||''):'',
+      orig:m.full>=0?row[m.full]:'',
       row:row, headers:REG.headers };
     return makePerson(first,last,extra);
   }).filter(p=>p.display.trim());
@@ -831,8 +838,13 @@ function renderResults(){
   T.querySelectorAll('.srch').forEach(inp=>inp.addEventListener('change',e=>{
     const i=+e.target.dataset.i;
     const opt=[...$('reglist').options].find(o=>o.value===e.target.value);
-    if(opt){ const idx=+opt.dataset.idx; RESULTS[i].res.pick=idx; RESULTS[i].res.status='y';
-      RESULTS[i].checked=true; saveAlias(RESULTS[i].p,REG.persons[idx]); renderResults(); }
+    if(opt){ const idx=+opt.dataset.idx;
+      RESULTS[i].res.pick=idx; RESULTS[i].res.status='y';
+      // βάλε τον επιλεγμένο ΠΡΩΤΟ στους υποψηφίους ώστε να εμφανίζεται (επιλεγμένος) στο dropdown
+      RESULTS[i].res.cands=[{i:idx,s:1}].concat((RESULTS[i].res.cands||[]).filter(c=>c.i!==idx));
+      RESULTS[i].res.ambiguous=false;
+      RESULTS[i].checked=true; saveAlias(RESULTS[i].p,REG.persons[idx]); renderResults();
+    }
   }));
   T.querySelectorAll('.chkrow').forEach(c=>c.addEventListener('change',e=>{ RESULTS[+e.target.dataset.i].checked=e.target.checked; renderResults(); }));
   T.querySelectorAll('.ektobtn').forEach(b=>b.addEventListener('click',e=>{ RESULTS[+e.target.dataset.i].ekto=!RESULTS[+e.target.dataset.i].ekto; renderResults(); }));
