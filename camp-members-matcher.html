@@ -210,6 +210,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <section class="step">
     <h2><span class="num">4</span> Μηχανή αντιστοίχισης &amp; μάθηση</h2>
     <div class="body">
+      <div id="leaderBar" class="hidden" style="margin-bottom:10px;padding:9px 11px;background:var(--light);border-radius:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b>Βαθμοφόροι — διάλεξε τμήμα:</b>
+        <select id="leaderSection"><option>Αγέλη</option><option>Ομάδα</option><option>Κοινότητα</option><option>Δίκτυο</option></select>
+        <span class="mini">Δεν χρειάζεται αρχείο συμμετεχόντων — διαλέγεις από το μητρώο. (Αν βάλεις αρχείο, όσοι υπέβαλαν προτσεκάρονται.)</span>
+      </div>
       <div class="toolbar">
         <button class="btn" id="runBtn" disabled>▶ Τρέξε αντιστοίχιση</button>
         <span class="mini" id="engInfo"></span>
@@ -614,6 +619,21 @@ function splitFull(s,order){
   return {first:parts[0], last:parts.slice(1).join(' ')};                     // Όνομα Επίθετο (default)
 }
 
+/* ---------- Βαθμοφόροι: κατηγορίες & picker ---------- */
+const CAT_CODES=['ΑΣ','ΑΑΛ','ΑΟΠ','ΑΚΑ','ΑΛ','ΟΠ','ΚΑ','ΔΙΚΤΥΟ','ΕΞ','+'];
+const CAT_NAME={ΑΣ:'Αρχηγός Συστήματος',ΑΑΛ:'Αρχηγός Αγέλης',ΑΟΠ:'Αρχηγός Ομάδας',ΑΚΑ:'Αρχηγός Κοινότητας',ΑΛ:'Βαθμοφόροι Αγέλης',ΟΠ:'Βαθμοφόροι Ομάδας',ΚΑ:'Βαθμοφόροι Κοινότητας',ΔΙΚΤΥΟ:'Δίκτυο',ΕΞ:'Εξωτερικού','+':'Επιπρόσθετοι'};
+function catCode(v){ const s=collapseSpaces(v).toUpperCase(); return s==='+'?'+':(CAT_CODES.includes(s)?s:''); }
+function detectCatCol(headers,rows){
+  let i=guess(headers,['Κατηγορία','Category','Είδος Βαθμοφόρου']); if(i>=0) return i;
+  let best=-1,bestR=0.49;
+  for(let c=0;c<headers.length;c++){ let tot=0,hit=0; rows.forEach(r=>{ const v=collapseSpaces(r[c]); if(v){tot++; if(catCode(v)) hit++;} }); if(tot>=3 && hit/tot>bestR){ bestR=hit/tot; best=c; } }
+  return best;
+}
+const SEC_LEADER={'Αγέλη':'ΑΑΛ','Ομάδα':'ΑΟΠ','Κοινότητα':'ΑΚΑ','Δίκτυο':''};
+const SEC_MEMBER={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'ΔΙΚΤΥΟ'};
+let LEADER_COLLAPSE={};
+function isLeaderMode(){ return REG && REG.tab==='Βαθμοφόροι' && REG.map && REG.map.cat>=0; }
+
 /* ---------- Μητρώο load ---------- */
 function loadReg(text){ ingestRegRows(parseCSV(text)); }
 function processSheet(rawRows){   // header-detect + trim → {headers, rows}
@@ -631,7 +651,8 @@ function ingestRegRows(rows, extraSheets){
     eno  :guess(headers,['Ενωμοτία','Ενωμοτια','Αγέλη','Section','Κλιμάκιο']),
     kath :guess(headers,['Καθήκον','Καθηκον','Ρόλος','Role','Duty']),
     father:guess(headers,['Όνομα Πατέρα','Ονομα Πατερα','Πατρώνυμο','Όνομα Πατρός','Father']),
-    birth :guess(headers,['Ημ. Γέννησης','Ημερομηνία Γέννησης','Ημ Γεννησης','Γέννηση','Birth','DOB'])
+    birth :guess(headers,['Ημ. Γέννησης','Ημερομηνία Γέννησης','Ημ Γεννησης','Γέννηση','Birth','DOB']),
+    cat   :detectCatCol(headers,data)
   };
   // δεύτερα blocks (π.χ. Δίκτυο στην Αγέλη) — ίδιο ΕΓΓΡΑΦΕΣ layout
   const extra=(extraSheets||[]).map(es=>{ const p=processSheet(es.raw); return {tab:es.tab, rows:p.rows, headers:p.headers}; }).filter(e=>e.rows.length);
@@ -666,6 +687,7 @@ function buildRegPersons(){
     const extra={ idi:m.idi>=0?collapseSpaces(row[m.idi]||''):'',
       father:m.father>=0?collapseSpaces(row[m.father]||''):'',
       birth:m.birth>=0?collapseSpaces(row[m.birth]||''):'',
+      cat:m.cat>=0?collapseSpaces(row[m.cat]||''):'',
       orig:m.full>=0?row[m.full]:'',
       row:row, headers:headers, src:src, role:role };
     return makePerson(first,last,extra);
@@ -734,8 +756,12 @@ function buildPartPersons(){
 let pendingTab=null;
 
 function refreshRun(){
-  const ok=REG&&REG.persons&&REG.persons.length&&PART&&PART.persons&&PART.persons.length;
+  const leaders=isLeaderMode();
+  const lb=$('leaderBar'); if(lb) lb.classList.toggle('hidden', !leaders);
+  const ok=REG&&REG.persons&&REG.persons.length && (leaders || (PART&&PART.persons&&PART.persons.length));
   $('runBtn').disabled=!ok;
+  if(leaders){ $('runBtn').textContent='▶ Δείξε βαθμοφόρους'; $('engInfo').textContent=ok?`Βαθμοφόροι: ${REG.persons.length} στο μητρώο — διάλεξε τμήμα & πάτα`:'Φόρτωσε το μητρώο (tab Βαθμοφόροι).'; return; }
+  $('runBtn').textContent='▶ Τρέξε αντιστοίχιση';
   $('engInfo').textContent=ok?`Έτοιμο: ${PART.persons.length} συμμετέχοντες × ${REG.persons.length} μητρώο`:'Φόρτωσε μητρώο + λίστα συμμετεχόντων.';
 }
 
@@ -743,6 +769,11 @@ function refreshRun(){
 $('runBtn').addEventListener('click',()=>{
   if(pendingTab && REG && !REG.tab){ REG.tab=pendingTab; }
   rebuildAliasMap();
+  if(isLeaderMode()){                                   // Βαθμοφόροι = picker ανά κατηγορία (χωρίς φόρμα)
+    buildLeaders($('leaderSection')?$('leaderSection').value:'Αγέλη');
+    renderLeadersTable();
+    $('resStep').classList.remove('hidden'); $('resStep').scrollIntoView({behavior:'smooth'}); return;
+  }
   RESULTS=PART.persons.map(p=>{
     const res=matchOne(p,REG.persons,ALIAS);
     const isExtra = res.pick>=0 && REG.persons[res.pick].extra.role==='extra';   // Δίκτυο = «select from» (όχι auto)
@@ -752,6 +783,50 @@ $('runBtn').addEventListener('click',()=>{
   $('resStep').classList.remove('hidden');
   $('resStep').scrollIntoView({behavior:'smooth'});
 });
+/* re-render όταν αλλάζει το τμήμα βαθμοφόρων */
+if($('leaderSection')) $('leaderSection').addEventListener('change',()=>{ if(isLeaderMode() && RESULTS.length){ buildLeaders($('leaderSection').value); renderLeadersTable(); } });
+
+/* ---------- Βαθμοφόροι picker (accordion ανά κατηγορία) ---------- */
+function buildLeaders(section){
+  const P=REG.persons; const byCat={};
+  P.forEach((p,i)=>{ const c=catCode(p.extra.cat)||'?'; (byCat[c]=byCat[c]||[]).push(i); });
+  const alpha=(a,b)=>P[a].display.localeCompare(P[b].display,'el');
+  const lead=SEC_LEADER[section], mem=SEC_MEMBER[section];
+  const consumed=new Set(); const groups=[];
+  let sec=[];
+  (byCat[lead]||[]).slice().sort(alpha).forEach(i=>{sec.push(i);consumed.add(i);});   // Αρχηγός Τμήματος
+  (byCat['ΑΣ']||[]).slice().sort(alpha).forEach(i=>{sec.push(i);consumed.add(i);});    // ΑΣ
+  (byCat[mem]||[]).slice().sort(alpha).forEach(i=>{sec.push(i);consumed.add(i);});     // βαθμοφόροι αλφαβητικά
+  if(sec.length) groups.push({title:'Τμήμα: '+section, items:sec, expanded:true, precheck:true});
+  if(section==='Αγέλη' && (byCat['ΔΙΚΤΥΟ']||[]).length){ const it=byCat['ΔΙΚΤΥΟ'].slice().sort(alpha); it.forEach(i=>consumed.add(i)); groups.push({title:'Δίκτυο', items:it, expanded:true, precheck:false}); }
+  ['ΑΑΛ','ΑΟΠ','ΑΚΑ','ΑΣ','ΑΛ','ΟΠ','ΚΑ','ΔΙΚΤΥΟ','ΕΞ','+'].forEach(code=>{ const items=(byCat[code]||[]).filter(i=>!consumed.has(i)).sort(alpha); if(items.length){ items.forEach(i=>consumed.add(i)); groups.push({title:CAT_NAME[code]||code, items, expanded:false, precheck:false}); } });
+  const rest=P.map((_,i)=>i).filter(i=>!consumed.has(i)).sort(alpha);
+  if(rest.length) groups.push({title:'Χωρίς κατηγορία', items:rest, expanded:false, precheck:false});
+  // προτσεκάρισμα από αρχείο συμμετεχόντων (αν υπάρχει)
+  const pre=new Set();
+  if(PART&&PART.persons&&PART.persons.length){ PART.persons.forEach(pp=>{ const res=matchOne(pp,P,ALIAS); if(res.pick>=0 && res.sim>=TH_AMBER) pre.add(res.pick); }); }
+  RESULTS=[]; LEADER_COLLAPSE={};
+  groups.forEach(g=>{ LEADER_COLLAPSE[g.title]=!g.expanded;
+    g.items.forEach(idx=>RESULTS.push({p:P[idx], res:{status:'g',pick:idx}, checked:(g.precheck||pre.has(idx)), ekto:false, gtitle:g.title})); });
+}
+function renderLeadersTable(){
+  const T=$('resTable'); const gc={};
+  RESULTS.forEach(R=>gc[R.gtitle]=(gc[R.gtitle]||0)+1);
+  let html='<tbody>', last=null;
+  RESULTS.forEach((R,idx)=>{
+    if(R.gtitle!==last){ last=R.gtitle; const col=LEADER_COLLAPSE[R.gtitle];
+      const chk=RESULTS.filter(x=>x.gtitle===R.gtitle&&x.checked).length;
+      html+=`<tr><td colspan="3" class="gtoggle" data-g="${escapeHtml(R.gtitle)}" style="background:var(--light);font-weight:600;cursor:pointer;padding:7px 8px">${col?'▸':'▾'} ${escapeHtml(R.gtitle)} <span class="mini">(${chk}/${gc[R.gtitle]} ✓)</span></td></tr>`;
+    }
+    const col=LEADER_COLLAPSE[R.gtitle];
+    html+=`<tr class="${col?'hidden':''}"><td style="width:34px;text-align:center"><input type="checkbox" class="lchk" data-i="${idx}" ${R.checked?'checked':''}></td><td>${escapeHtml(R.p.display)}</td><td class="mini" style="width:64px">${escapeHtml(catCode(R.p.extra.cat))}</td></tr>`;
+  });
+  T.innerHTML=html+'</tbody>';
+  const total=RESULTS.length, checked=RESULTS.filter(R=>R.checked).length;
+  $('counts').innerHTML=`<span class="pill t">Βαθμοφόροι ${total}</span><span class="pill g">Επιλεγμένοι ${checked}</span><span class="mini" style="margin-left:6px">· ✓ = μπαίνει στο export</span>`;
+  T.querySelectorAll('.lchk').forEach(c=>c.addEventListener('change',e=>{ RESULTS[+e.target.dataset.i].checked=e.target.checked; renderLeadersTable(); }));
+  T.querySelectorAll('.gtoggle').forEach(t=>t.addEventListener('click',()=>{ LEADER_COLLAPSE[t.dataset.g]=!LEADER_COLLAPSE[t.dataset.g]; renderLeadersTable(); }));
+}
 
 function rebuildAliasMap(){
   ALIAS={};
@@ -958,8 +1033,8 @@ function addManual(){
   const name=collapseSpaces($('manualName').value); if(!name){ toast('Γράψε ονοματεπώνυμο.'); return; }
   const sp=splitFull(name,'FL');
   const p=makePerson(sp.first,sp.last,{raw:name});
-  RESULTS.push({p,res:{status:'r',pick:-1,cands:[]},checked:true,ekto:false});
-  $('manualName').value=''; renderResults(); toast('Προστέθηκε (μόνο όνομα): '+name);
+  RESULTS.push({p,res:{status:'r',pick:-1,cands:[]},checked:true,ekto:false,gtitle:'Χειροκίνητα (εκτός λίστας)'});
+  $('manualName').value=''; if(isLeaderMode()) renderLeadersTable(); else renderResults(); toast('Προστέθηκε (μόνο όνομα): '+name);
 }
 $('manualAdd').addEventListener('click',addManual);
 $('manualName').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
