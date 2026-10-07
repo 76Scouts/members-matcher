@@ -1281,17 +1281,15 @@ wireDrop('dropPart','filePart',handlePartFile);
   const base='Τα δεδομένα επεξεργάζονται 100% τοπικά στον browser σου και δεν αποστέλλονται πουθενά — το εργαλείο δεν κάνει καμία εξωτερική κλήση.';
   if(proto==='file:'){
     tx.textContent=base+' · Τρέχει ως τοπικό αρχείο.';
-  } else if(ALLOWED.includes(host)){
+  } else if(ALLOWED.includes(host) || /(^|\.)76\.life$/.test(host)){   // κάθε *.76.life (π.χ. matcher.76.life)
     tx.textContent=base+' · Φιλοξενείται στο '+host+'.';
   } else {
     // hosted on a non-recognised domain → keep working but warn about access control
     bn.style.background='var(--amberbg)'; bn.style.borderColor='var(--amberbd)'; bn.style.color='#7a5410';
     tx.textContent=base;
     warn.classList.remove('hidden');
-    warn.innerHTML='⚠ Μη αναγνωρισμένο domain (<b>'+escapeHtml(host)+'</b>). Το εργαλείο κρατά τα δεδομένα τοπικά, '
-      +'αλλά πριν φορτώσεις πραγματικά δεδομένα μελών βεβαιώσου ότι η σελίδα είναι κλειδωμένη με πρόσβαση '
-      +'σε επίπεδο διακομιστή (π.χ. .htpasswd / Basic Auth), όχι απλώς κωδικός σελίδας WordPress. '
-      +'Αν είναι δημόσια προσβάσιμη, μη φορτώνεις πραγματικά δεδομένα μελών.';
+    warn.innerHTML='⚠ Η σελίδα δεν σερβίρεται από επίσημο domain του 76ου (<b>'+escapeHtml(host)+'</b>) — μπορεί να είναι τροποποιημένο αντίγραφο. '
+      +'Για πραγματικά δεδομένα μελών χρησιμοποίησε το <b>matcher.76.life</b>.';
   }
 })();
 
